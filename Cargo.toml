@@ -1,0 +1,10 @@
+[package]
+name = "cni"
+version = "0.1.0"
+authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
+edition = "2018"
+license = "Unlicense"
+readme = "README.md"
+
+[dependencies]
+peg = "0.6.3"
