@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::str::Chars;
+use std::iter::Peekable;
 
 #[cfg(test)]
 mod tests;
@@ -9,21 +10,19 @@ fn is_vertical_ws(c: char) -> bool {
 	matches!(c, '\n' | '\u{B}' | '\u{C}' | '\r' | '\u{85}' | '\u{2028}' | '\u{2029}')
 }
 
-fn skip_ws(chars: &mut Chars) {
-	let mut p = chars.peekable();
-	while matches!(p.peek(), Some(c) if c.is_whitespace()) {
-		p.next();
+fn skip_ws(chars: &mut Peekable<Chars>) {
+	while matches!(chars.peek(), Some(c) if c.is_whitespace()) {
+		chars.next();
 	}
 }
 
-fn parse_key(chars: &mut Chars) -> Result<String, &'static str> {
+fn parse_key(chars: &mut Peekable<Chars>) -> Result<String, &'static str> {
 	// because chars is a &mut, the iterator is not moved and can still be used
 	// after this call
-	let mut p = chars.peekable();
 	let mut key = String::new();
 
-	while matches!(p.peek(), Some('0'..='9')|Some('a'..='z')|Some('A'..='Z')|Some('.')) {
-		key.push(p.next().unwrap());
+	while matches!(chars.peek(), Some('0'..='9')|Some('a'..='z')|Some('A'..='Z')|Some('.')) {
+		key.push(chars.next().unwrap());
 	}
 
 	if key.starts_with('.') || key.ends_with('.') {
@@ -36,29 +35,29 @@ fn parse_key(chars: &mut Chars) -> Result<String, &'static str> {
 	}
 }
 
-fn parse_value(chars: &mut Chars) -> Result<String, &'static str> {
-	let mut p = chars.peekable();
+fn parse_value(chars: &mut Peekable<Chars>) -> Result<String, &'static str> {
 	let mut value = String::new();
 
-	while matches!(p.peek(), Some(c) if c.is_alphanumeric()||(c.is_whitespace()&&!is_vertical_ws(*c))) {
-		value.push(p.next().unwrap());
+	while matches!(chars.peek(), Some(c) if c.is_alphanumeric()||(c.is_whitespace()&&!is_vertical_ws(*c))) {
+		value.push(chars.next().unwrap());
 	}
 
 	Ok(value.trim().to_string())
 }
 
 pub fn parse(text: &str) -> Result<HashMap<String, String>, &'static str> {
-	let mut chars = text.chars();
+	let mut chars = text.chars().peekable();
 	let mut map = HashMap::new();
 	let mut section = String::new();
 
-	while let Some(c) = chars.next() {
+	while let Some(&c) = chars.peek() {
 		if c.is_whitespace() /* same as Perl's and Raku's \s */ {
-			continue;
+			chars.next(); // consume whitespace
 		} else if c == '#' || c == ';' {
 			// comment, continue until next vertical whitespace or EOF
 			while matches!(chars.next(), Some(c) if !is_vertical_ws(c)) {}
 		} else if c == '[' {
+			chars.next(); // consume [
 			skip_ws(&mut chars);
 			section = parse_key(&mut chars)?;
 			skip_ws(&mut chars);
@@ -67,9 +66,11 @@ pub fn parse(text: &str) -> Result<HashMap<String, String>, &'static str> {
 			}
 		} else {
 			// this should be a key
-			let key = parse_key(&mut chars)?;
-			// prepend section name
-			let key = section.chars().chain(key.chars()).collect();
+			let mut key = parse_key(&mut chars)?;
+			if !section.is_empty() {
+				// prepend section name
+				key = format!("{}.{}", section, key);
+			}
 
 			skip_ws(&mut chars);
 			if chars.next() != Some('=') {
