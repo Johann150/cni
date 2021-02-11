@@ -1,0 +1,3 @@
+[submodule "src/tests/cni"]
+	path = src/tests/cni
+	url = https://github.com/libuconf/cni.git
