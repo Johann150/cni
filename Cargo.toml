@@ -5,9 +5,9 @@ authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
 edition = "2018"
 license = "Unlicense"
 readme = "README.md"
+exclude = ["src/tests/**"]
 
 [dependencies]
-peg = "0.6.3"
 
 [dev-dependencies]
 serde_json = "1.0"
