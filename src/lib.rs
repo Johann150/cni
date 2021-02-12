@@ -34,8 +34,6 @@ fn parse_key(chars: &mut Peekable<Chars>) -> Result<String, &'static str> {
     if key.starts_with('.') || key.ends_with('.') {
         // key cannot start or end with a dot
         Err("invalid key")
-    } else if key.is_empty() {
-        Err("expected key")
     } else {
         Ok(key)
     }
@@ -102,6 +100,11 @@ pub fn parse(text: &str) -> Result<HashMap<String, String>, &'static str> {
         } else {
             // this should be a key
             let mut key = parse_key(&mut chars)?;
+            // this key cannot be empty
+            if key.is_empty() {
+                return Err("expected key");
+            }
+
             if !section.is_empty() {
                 // prepend section name
                 key = format!("{}.{}", section, key);
