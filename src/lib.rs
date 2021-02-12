@@ -1,3 +1,24 @@
+//! This is a parser library for the [CNI configuration format (CoNfiguration Initialization format)](https://github.com/libuconf/cni/) by libuconf.
+//! The implementation is fully compliant with the `core` and `ini` part of the specification and with both extensions `flexspace` and `tabulation`.
+//!
+//! You can use the library like this:
+//! ```
+//! # use std::collections::HashMap;
+//! let cni = r"
+//! [section]
+//! key = value
+//! rkey = `raw value with `` escaped`
+//! ";
+//!
+//! let parsed = cni::parse(&cni).expect("could not parse CNI");
+//!
+//! let mut result = HashMap::new();
+//! result.insert("section.key".to_string(), "value".to_string());
+//! result.insert("section.rkey".to_string(), "raw value with ` escaped".to_string());
+//!
+//! assert_eq!(parsed,result);
+//! ```
+
 use std::collections::HashMap;
 use std::iter::Peekable;
 use std::str::Chars;
@@ -76,6 +97,11 @@ fn parse_value(chars: &mut Peekable<Chars>) -> Result<String, &'static str> {
     Ok(value)
 }
 
+/// Parses CNI format text and returns the resulting key-value store.
+///
+/// Section names are prepended to the key separated by a dot.
+///
+/// For more information see the [crate level documentation](index.html).
 pub fn parse(text: &str) -> Result<HashMap<String, String>, &'static str> {
     let mut chars = text.chars().peekable();
     let mut map = HashMap::new();
