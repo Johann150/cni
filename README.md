@@ -1,8 +1,8 @@
 # CNI
 
-This will be a parser for the [CNI configuration format](https://github.com/libuconf/cni/).
+This is a parser library for the [CNI configuration format](https://github.com/libuconf/cni/).
 
 ## Reference Compliance
 `core`: 32/32
 `ini`: fully compliant
-`ext`: tabulation
+`ext`: tabulation, flexspace
