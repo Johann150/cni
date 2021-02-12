@@ -70,9 +70,10 @@ fn parse_value(chars: &mut Peekable<Chars>) -> Result<String, &'static str> {
         {
             value.push(chars.next().unwrap());
         }
+        value = value.trim().to_string();
     }
 
-    Ok(value.trim().to_string())
+    Ok(value)
 }
 
 pub fn parse(text: &str) -> Result<HashMap<String, String>, &'static str> {
