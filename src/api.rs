@@ -70,9 +70,7 @@ impl<T: Clone> Cni for HashMap<String, T> {
     fn in_section(&self, section: &str) -> Self {
         self.iter()
             .filter_map(|(k, v)| {
-                if k.starts_with(section)
-                	&& k[section.len()..].starts_with('.')
-                {
+                if k.starts_with(section) && k[section.len()..].starts_with('.') {
                     Some((k[section.len() + 1..].to_string(), v.clone()))
                 } else {
                     None
@@ -85,8 +83,8 @@ impl<T: Clone> Cni for HashMap<String, T> {
         self.iter()
             .filter_map(|(k, v)| {
                 if k.starts_with(section)
-                	&& k[section.len()..].starts_with('.')
-                	&& !k[section.len()+1..].contains('.')
+                    && k[section.len()..].starts_with('.')
+                    && !k[section.len() + 1..].contains('.')
                 {
                     Some((k[section.len() + 1..].to_string(), v.clone()))
                 } else {
@@ -157,11 +155,11 @@ where
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
-    	self.iter.borrow_mut().find(|(k, _v)| {
-    		let k = k.as_ref();
+        self.iter.borrow_mut().find(|(k, _v)| {
+            let k = k.as_ref();
             k.starts_with(self.section)
-            && k[self.section.len()..].starts_with('.')
-            && !(self.only_direct_children && k[self.section.len() + 1..].contains('.'))
+                && k[self.section.len()..].starts_with('.')
+                && !(self.only_direct_children && k[self.section.len() + 1..].contains('.'))
         })
     }
 }
