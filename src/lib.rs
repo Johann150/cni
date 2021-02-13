@@ -1,22 +1,60 @@
-//! This is a parser library for the [CNI configuration format (CoNfiguration Initialization format)](https://github.com/libuconf/cni/) by libuconf.
-//! The implementation is fully compliant with the `core` and `ini` part of the specification and with both extensions `flexspace` and `tabulation`.
+//! This is a parser library for the
+//! [CNI configuration format (CoNfiguration Initialization format)][CNI]
+//! by libuconf. The implementation is fully compliant with the `core` and
+//! `ini` part of the specification and with the extensions `flexspace` and
+//! `tabulation`.
+//!
+//! [CNI]: https://github.com/libuconf/cni/
 //!
 //! You can use the library like this:
 //! ```
-//! # use std::collections::HashMap;
+//! use std::collections::HashMap;
+//!
 //! let cni = r"
 //! [section]
 //! key = value
 //! rkey = `raw value with `` escaped`
+//! subsection.key = look, whitespace!
 //! ";
 //!
 //! let parsed = cni::parse(&cni).expect("could not parse CNI");
 //!
-//! let mut result = HashMap::new();
-//! result.insert("section.key".to_string(), "value".to_string());
-//! result.insert("section.rkey".to_string(), "raw value with ` escaped".to_string());
+//! // You can get everything, section names will be prepended to key names.
+//! {
+//!     let mut result: HashMap<String, String> = HashMap::new();
+//!     result.insert("section.key".to_string(), "value".to_string());
+//!     result.insert("section.rkey".to_string(), "raw value with ` escaped".to_string());
+//!     result.insert("section.subsection.key".to_string(), "look, whitespace!".to_string());
 //!
-//! assert_eq!(parsed,result);
+//!     assert_eq!(parsed, result);
+//! }
+//!
+//! // You can get values from one section only.
+//! {
+//!     let mut section: HashMap<String, String> = HashMap::new();
+//!     section.insert("key".to_string(), "value".to_string());
+//!     section.insert("rkey".to_string(), "raw value with ` escaped".to_string());
+//!     section.insert("subsection.key".to_string(), "look, whitespace!".to_string());
+//!
+//!     // use trait that adds CNI related functionality
+//!     use cni::api::Cni;
+//!
+//!     // filter out values in section "section"
+//!     assert_eq!(parsed.in_section("section"), section);
+//! }
+//!
+//! // You can get child nodes from one section only, excluding subsections.
+//! {
+//!     let mut section: HashMap<String, String> = HashMap::new();
+//!     section.insert("key".to_string(), "value".to_string());
+//!     section.insert("rkey".to_string(), "raw value with ` escaped".to_string());
+//!
+//!     // use trait that adds CNI related functionality
+//!     use cni::api::Cni;
+//!
+//!     // filter out values in section "section", but not in subsections
+//!     assert_eq!(parsed.children_in_section("section"), section);
+//! }
 //! ```
 
 use std::collections::HashMap;
