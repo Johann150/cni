@@ -86,8 +86,8 @@ fn parse_value(chars: &mut Peekable<Chars>) -> Result<String, &'static str> {
             }
         }
     } else {
-        // normal value: alphanumerics or horizontal whitespace
-        while matches!(chars.peek(), Some(c) if c.is_alphanumeric()||(c.is_whitespace()&&!is_vertical_ws(*c)))
+        // normal value: no comment starting character but white space, but not vertical space
+        while matches!(chars.peek(), Some(&c) if c != '#' && c != ';' && !( c.is_whitespace() && is_vertical_ws(c) ))
         {
             value.push(chars.next().unwrap());
         }

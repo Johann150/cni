@@ -54,6 +54,9 @@ mod core {
     cni_test!(section09, "cni/tests/core/section/09", fail);
 
     cni_test!(sect_and_key, "cni/tests/core/sect_and_key");
+
+    cni_test!(unicode_ok, "cni/tests/core/unicode");
+    cni_test!(unicode_fail, "cni/tests/core/unicode", fail);
 }
 
 mod ini {
