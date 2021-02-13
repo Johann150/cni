@@ -26,6 +26,8 @@ use std::str::Chars;
 #[cfg(test)]
 mod tests;
 
+pub mod api;
+
 fn is_vertical_ws(c: char) -> bool {
     // Perl's / Raku's "\v"
     matches!(

@@ -16,6 +16,8 @@ macro_rules! cni_test (
 	};
 );
 
+mod api;
+
 mod core {
     cni_test!(bareword01, "cni/tests/core/bareword/01");
     cni_test!(bareword02, "cni/tests/core/bareword/02");
