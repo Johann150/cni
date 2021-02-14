@@ -66,8 +66,8 @@ mod tests;
 
 pub mod api;
 
+/// implements Perl's / Raku's "\v", i.e. vertical white space
 fn is_vertical_ws(c: char) -> bool {
-    // Perl's / Raku's "\v"
     matches!(
         c,
         '\n' | '\u{B}' | '\u{C}' | '\r' | '\u{85}' | '\u{2028}' | '\u{2029}'
@@ -159,6 +159,7 @@ pub fn parse(text: &str) -> Result<HashMap<String, String>, &'static str> {
             // section heading
             chars.next(); // consume [
             skip_ws(&mut chars);
+            // this key can be empty
             section = parse_key(&mut chars)?;
             skip_ws(&mut chars);
             if chars.next() != Some(']') {
