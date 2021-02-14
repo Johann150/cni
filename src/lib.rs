@@ -59,7 +59,8 @@
 
 use std::collections::HashMap;
 use std::iter::Peekable;
-use std::str::Chars;
+use std::ops::Range;
+use std::str::CharIndices;
 
 #[cfg(test)]
 mod tests;
@@ -74,121 +75,157 @@ fn is_vertical_ws(c: char) -> bool {
     )
 }
 
-fn skip_ws(chars: &mut Peekable<Chars>) {
-    while matches!(chars.peek(), Some(c) if c.is_whitespace()) {
-        chars.next();
-    }
+/// An iterator that visits all key/value pairs in declaration order, even
+/// key/value pairs that will be overwritten by later statements.
+///
+/// If you just want to access the resulting key/value store, take a look at
+/// [`parse`].
+pub struct CniParser<'source> {
+    source: &'source str,
+    /// The iterator stores the current position.
+    iter: Peekable<CharIndices<'source>>,
+    /// The current section name.
+    section: Range<usize>,
 }
 
-fn parse_key(chars: &mut Peekable<Chars>) -> Result<String, &'static str> {
-    // because chars is a &mut, the iterator is not moved and can still be used
-    // after this call
-    let mut key = String::new();
-
-    while matches!(
-        chars.peek(),
-        Some('0'..='9') | Some('a'..='z') | Some('A'..='Z') | Some('-') | Some('_') | Some('.')
-    ) {
-        key.push(chars.next().unwrap());
+impl<'a> CniParser<'a> {
+    pub fn new(source: &'a str) -> Self {
+        Self {
+            source,
+            iter: source.char_indices().peekable(),
+            section: 0..0,
+        }
     }
 
-    if key.starts_with('.') || key.ends_with('.') {
-        // key cannot start or end with a dot
-        Err("invalid key")
-    } else {
-        Ok(key)
+    fn skip_ws(&mut self) {
+        while matches!(self.iter.peek(), Some((_, c)) if c.is_whitespace()) {
+            self.iter.next();
+        }
     }
-}
 
-fn parse_value(chars: &mut Peekable<Chars>) -> Result<String, &'static str> {
-    let mut value = String::new();
+    fn parse_key(&mut self) -> Result<Range<usize>, &'static str> {
+        let start = self.iter.peek().unwrap().0;
+        let mut end = start;
 
-    if chars.peek() == Some(&'`') {
-        // raw value
-        chars.next(); // consume backtick
-        loop {
-            if chars.peek() == Some(&'`') {
-                // check if this is an escaped backtick
-                chars.next();
-                if chars.peek() == Some(&'`') {
-                    // escaped backtick
-                    chars.next();
-                    value.push('`');
+        while matches!(
+            self.iter.peek(),
+            Some((_, '0'..='9')) | Some((_, 'a'..='z')) | Some((_, 'A'..='Z')) | Some((_, '-')) | Some((_, '_')) | Some((_, '.'))
+        ) {
+            end += self.iter.next().unwrap().1.len_utf8();
+        }
+
+        let key = &self.source[start..end];
+
+        if key.starts_with('.') || key.ends_with('.') {
+            // key cannot start or end with a dot
+            Err("invalid key")
+        } else {
+            Ok(start..end)
+        }
+    }
+
+    fn parse_value(&mut self) -> Result<String, &'static str> {
+        // since raw values might have escaped backtics, they have to
+        // be constructed as Strings and cannot be a reference.
+        let mut value = String::new();
+
+        if let Some(&(_, '`')) = self.iter.peek() {
+            println!("raw value");
+            // raw value
+            self.iter.next(); // consume backtick
+            loop {
+                if let Some((_, '`')) = self.iter.peek() {
+                    // check if this is an escaped backtick
+                    self.iter.next();
+                    if let Some((_, '`')) = self.iter.peek() {
+                        // escaped backtick
+                        self.iter.next();
+                        value.push('`');
+                    } else {
+                        // end of the value
+                        break;
+                    }
+                } else if let Some((_, c)) = self.iter.next() {
+                    value.push(c);
                 } else {
-                    // end of the value
-                    break;
+                    // current value must have been a None
+                    return Err("unterminated raw value");
                 }
-            } else if let Some(c) = chars.next() {
-                value.push(c);
+            }
+        } else {
+            println!("normal");
+            // normal value: no comment starting character but white space, but not vertical space
+            while matches!(self.iter.peek(), Some(&(_, c)) if c != '#' && c != ';' && !( c.is_whitespace() && is_vertical_ws(c) ))
+            {
+                value.push(self.iter.next().unwrap().1);
+            }
+            value = value.trim().to_string();
+        }
+
+        Ok(value)
+    }
+}
+
+impl Iterator for CniParser<'_> {
+    type Item = Result<(String, String), &'static str>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            self.skip_ws();
+            let (_, c) = *self.iter.peek()?;
+            if "#;".contains(c) {
+                // comment, continue until next vertical whitespace or EOF
+                while matches!(self.iter.next(), Some((_, c)) if !is_vertical_ws(c)) {}
+            } else if c == '[' {
+                // section heading
+                self.iter.next(); // consume [
+                self.skip_ws();
+                // this key can be empty
+                match self.parse_key() {
+                    Ok(key) => self.section = key,
+                    Err(e) => return Some(Err(e)),
+                };
+                self.skip_ws();
+                if self.iter.next().map_or(true, |(_, c)| c != ']') {
+                    return Some(Err("expected \"]\""));
+                }
             } else {
-                // current value must have been a None
-                return Err("unterminated raw value");
+                // this should be a key/value pair
+                let key = match self.parse_key() {
+                    // this key cannot be empty
+                    Ok(key) if key.is_empty() => return Some(Err("expected key")),
+                    // do not prepend an empty section
+                    Ok(key) if self.section.is_empty() => self.source[key].to_string(),
+                    Ok(key) => format!(
+                        "{}.{}",
+                        &self.source[self.section.clone()],
+                        &self.source[key]
+                    ),
+                    Err(e) => return Some(Err(e)),
+                };
+
+                self.skip_ws();
+                if self.iter.next().map_or(true, |(_, c)| c != '=') {
+                    return Some(Err("expected \"=\""));
+                }
+                self.skip_ws();
+
+                let value = match self.parse_value() {
+                    Ok(key) => key,
+                    Err(e) => return Some(Err(e)),
+                };
+
+                break Some(Ok((key, value)));
             }
         }
-    } else {
-        // normal value: no comment starting character but white space, but not vertical space
-        while matches!(chars.peek(), Some(&c) if c != '#' && c != ';' && !( c.is_whitespace() && is_vertical_ws(c) ))
-        {
-            value.push(chars.next().unwrap());
-        }
-        value = value.trim().to_string();
     }
-
-    Ok(value)
 }
 
-/// Parses CNI format text and returns the resulting key-value store.
+/// Parses CNI format text and returns the resulting key/value store.
 ///
-/// Section names are prepended to the key separated by a dot.
+/// This just constructs a [`CniParser`] and collects it.
 ///
 /// For more information see the [crate level documentation](index.html).
 pub fn parse(text: &str) -> Result<HashMap<String, String>, &'static str> {
-    let mut chars = text.chars().peekable();
-    let mut map = HashMap::new();
-    let mut section = String::new();
-
-    while let Some(&c) = chars.peek() {
-        if c.is_whitespace()
-        /* same as Perl's and Raku's \s */
-        {
-            chars.next(); // consume whitespace
-        } else if c == '#' || c == ';' {
-            // comment, continue until next vertical whitespace or EOF
-            while matches!(chars.next(), Some(c) if !is_vertical_ws(c)) {}
-        } else if c == '[' {
-            // section heading
-            chars.next(); // consume [
-            skip_ws(&mut chars);
-            // this key can be empty
-            section = parse_key(&mut chars)?;
-            skip_ws(&mut chars);
-            if chars.next() != Some(']') {
-                return Err("expected \"]\"");
-            }
-        } else {
-            // this should be a key
-            let mut key = parse_key(&mut chars)?;
-            // this key cannot be empty
-            if key.is_empty() {
-                return Err("expected key");
-            }
-
-            if !section.is_empty() {
-                // prepend section name
-                key = format!("{}.{}", section, key);
-            }
-
-            skip_ws(&mut chars);
-            if chars.next() != Some('=') {
-                return Err("expected \"=\"");
-            }
-            skip_ws(&mut chars);
-
-            let value = parse_value(&mut chars)?;
-
-            map.insert(key, value);
-        }
-    }
-
-    Ok(map)
+    CniParser::new(text).collect()
 }
