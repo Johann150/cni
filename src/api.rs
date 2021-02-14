@@ -19,7 +19,7 @@
 //! [`WalkFlat`]: CniIter::children_in_section
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::iter::FromIterator;
 
 /// Provides the [`SubRec`] and [`SubFlat`] functions.
 ///
@@ -66,12 +66,19 @@ pub trait Cni: Sized {
     }
 }
 
-impl<T: Clone> Cni for HashMap<String, T> {
+impl<I, K, V> Cni for I
+where
+    I: IntoIterator<Item = (K, V)> + Clone + FromIterator<(String, V)>,
+    K: AsRef<str>,
+    V: Clone,
+{
     fn in_section(&self, section: &str) -> Self {
-        self.iter()
+        self.clone()
+            .into_iter()
             .filter_map(|(k, v)| {
+                let k = k.as_ref();
                 if k.starts_with(section) && k[section.len()..].starts_with('.') {
-                    Some((k[section.len() + 1..].to_string(), v.clone()))
+                    Some((k[section.len() + 1..].to_string(), v))
                 } else {
                     None
                 }
@@ -80,13 +87,15 @@ impl<T: Clone> Cni for HashMap<String, T> {
     }
 
     fn children_in_section(&self, section: &str) -> Self {
-        self.iter()
+        self.clone()
+            .into_iter()
             .filter_map(|(k, v)| {
+                let k = k.as_ref();
                 if k.starts_with(section)
                     && k[section.len()..].starts_with('.')
                     && !k[section.len() + 1..].contains('.')
                 {
-                    Some((k[section.len() + 1..].to_string(), v.clone()))
+                    Some((k[section.len() + 1..].to_string(), v))
                 } else {
                     None
                 }
