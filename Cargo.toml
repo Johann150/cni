@@ -26,3 +26,6 @@ ini = []
 flexspace = ["tabulation"]
 # enables ext `tabulation`
 tabulation = []
+# enables ext `more-keys`
+# this has been accepted but not yet merged (libuconf/cni/#2)
+more-keys = []

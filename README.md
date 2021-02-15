@@ -11,4 +11,4 @@ Please note that the specification for the CNI format has not yet been stabilize
 
 - `core`: 34/34
 - `ini`: fully compliant (default)
-- `ext`: tabulation (default), flexspace (default)
+- `ext`: tabulation (default), flexspace (default), more-keys (not default)

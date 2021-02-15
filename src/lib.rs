@@ -80,7 +80,11 @@ fn is_comment(c: char) -> bool {
 }
 
 fn is_key(c: char) -> bool {
-    matches!(c, '0'..='9' | 'a'..='z' | 'A'..='Z' | '-' | '_' | '.')
+    if cfg!(feature = "more-keys") {
+        !matches!(c, '[' | ']' | '=' | '`') && !is_comment(c) && !c.is_whitespace()
+    } else {
+        matches!(c, '0'..='9' | 'a'..='z' | 'A'..='Z' | '-' | '_' | '.')
+    }
 }
 
 /// An iterator that visits all key/value pairs in declaration order, even
