@@ -75,18 +75,19 @@ fn is_vertical_ws(c: char) -> bool {
     )
 }
 
-#[cfg(feature = "ini")]
 fn is_comment(c: char) -> bool {
-    c == '#' || c == ';'
+    c == '#' || (cfg!(feature = "ini") && c == ';')
 }
 
-#[cfg(not(feature = "ini"))]
-fn is_comment(c: char) -> bool {
-    c == '#'
+fn is_key(c: char) -> bool {
+    matches!(c, '0'..='9' | 'a'..='z' | 'A'..='Z' | '-' | '_' | '.')
 }
 
 /// An iterator that visits all key/value pairs in declaration order, even
 /// key/value pairs that will be overwritten by later statements.
+///
+/// Calling `next` on this iterator after receiving a `Some(Err(_))` causes
+/// undefined behaviour.
 ///
 /// If you just want to access the resulting key/value store, take a look at
 /// [`parse`].
@@ -107,9 +108,57 @@ impl<'a> CniParser<'a> {
         }
     }
 
-    fn skip_ws(&mut self) {
-        while matches!(self.iter.peek(), Some((_, c)) if c.is_whitespace()) {
+    /// Skips horizontal whitespace.
+    fn skip_h_ws(&mut self) {
+        while matches!(
+            self.iter.peek(),
+            Some(&(_, c)) if c.is_whitespace()
+                // flexspace removes horizontal/vertical whitespace distinction
+                && (cfg!(feature = "flexspace") || !is_vertical_ws(c))
+        ) {
             self.iter.next();
+        }
+    }
+
+    /// skips whitespace allowed by tabulation extension, or returns an Err if
+    /// it finds whitespace and `tabulation` is disabled.
+    fn skip_tab(&mut self) -> Result<(), &'static str> {
+        if cfg!(any(feature = "tabulation", feature = "flexspace")) {
+            self.skip_h_ws();
+            Ok(())
+        } else {
+            match self.iter.peek() {
+                // this is horizontal whitespace
+                Some(&(_, c)) if c.is_whitespace() && !is_vertical_ws(c) => {
+                    Err("disallowed horizontal whitespace")
+                }
+                _ => Ok(()),
+            }
+        }
+    }
+
+    fn skip_comment(&mut self) -> Result<(), &'static str> {
+        self.skip_h_ws();
+        if self
+            .iter
+            .peek()
+            .map_or(true, |&(_, c)| is_comment(c) || is_vertical_ws(c))
+        {
+            if cfg!(feature = "flexspace")
+                && !matches!(self.iter.peek(), Some(&(_, c)) if is_comment(c))
+            {
+                // flexspace will have moved us to the next line already, so do
+                // not skip if this is not really a comment
+                return Ok(());
+            }
+            // continue until next vertical whitespace or EOF
+            while matches!(self.iter.next(), Some((_, c)) if !is_vertical_ws(c)) {}
+            Ok(())
+        } else if cfg!(feature = "flexspace") {
+            // with flexspace, all bets about line endings are off
+            Ok(())
+        } else {
+            Err("expected comment or end of line")
         }
     }
 
@@ -117,10 +166,7 @@ impl<'a> CniParser<'a> {
         let start = self.iter.peek().unwrap().0;
         let mut end = start;
 
-        while matches!(
-            self.iter.peek(),
-            Some((_, '0'..='9')) | Some((_, 'a'..='z')) | Some((_, 'A'..='Z')) | Some((_, '-')) | Some((_, '_')) | Some((_, '.'))
-        ) {
+        while matches!(self.iter.peek(), Some(&(_, c)) if is_key(c)) {
             end += self.iter.next().unwrap().1.len_utf8();
         }
 
@@ -140,7 +186,6 @@ impl<'a> CniParser<'a> {
         let mut value = String::new();
 
         if let Some(&(_, '`')) = self.iter.peek() {
-            println!("raw value");
             // raw value
             self.iter.next(); // consume backtick
             loop {
@@ -163,12 +208,12 @@ impl<'a> CniParser<'a> {
                 }
             }
         } else {
-            println!("normal");
             // normal value: no comment starting character but white space, but not vertical space
-            while matches!(self.iter.peek(), Some(&(_, c)) if c != '#' && c != ';' && !( c.is_whitespace() && is_vertical_ws(c) ))
+            while matches!(self.iter.peek(), Some(&(_, c)) if !is_comment(c) && !( c.is_whitespace() && is_vertical_ws(c) ))
             {
                 value.push(self.iter.next().unwrap().1);
             }
+            // leading or trailing whitespace cannot be part of the value
             value = value.trim().to_string();
         }
 
@@ -181,26 +226,40 @@ impl Iterator for CniParser<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            self.skip_ws();
+            if let Err(e) = self.skip_tab() {
+                return Some(Err(e));
+            }
+            // we should be at start of a line now
             let (_, c) = *self.iter.peek()?;
-            if is_comment(c) {
-                // comment, continue until next vertical whitespace or EOF
-                while matches!(self.iter.next(), Some((_, c)) if !is_vertical_ws(c)) {}
+            if is_vertical_ws(c) {
+                // empty line
+                self.iter.next();
+                continue;
+            } else if is_comment(c) {
+                if let Err(e) = self.skip_comment() {
+                    return Some(Err(e));
+                }
             } else if c == '[' {
                 // section heading
                 self.iter.next(); // consume [
-                self.skip_ws();
+                if self.skip_tab().is_err() {
+                    return Some(Err("expected section name, found whitespace"));
+                }
                 // this key can be empty
                 match self.parse_key() {
                     Ok(key) => self.section = key,
                     Err(e) => return Some(Err(e)),
                 };
-                self.skip_ws();
-                if self.iter.next().map_or(true, |(_, c)| c != ']') {
+                if self.skip_tab().is_err() || self.iter.next().map_or(true, |(_, c)| c != ']') {
                     return Some(Err("expected \"]\""));
+                }
+                if let Err(e) = self.skip_comment() {
+                    return Some(Err(e));
                 }
             } else {
                 // this should be a key/value pair
+
+                // parse key, prepend it with section name if present
                 let key = match self.parse_key() {
                     // this key cannot be empty
                     Ok(key) if key.is_empty() => return Some(Err("expected key")),
@@ -214,16 +273,20 @@ impl Iterator for CniParser<'_> {
                     Err(e) => return Some(Err(e)),
                 };
 
-                self.skip_ws();
+                self.skip_h_ws();
                 if self.iter.next().map_or(true, |(_, c)| c != '=') {
                     return Some(Err("expected \"=\""));
                 }
-                self.skip_ws();
+                self.skip_h_ws();
 
                 let value = match self.parse_value() {
                     Ok(key) => key,
                     Err(e) => return Some(Err(e)),
                 };
+
+                if let Err(e) = self.skip_comment() {
+                    return Some(Err(e));
+                }
 
                 break Some(Ok((key, value)));
             }
