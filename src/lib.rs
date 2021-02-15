@@ -75,6 +75,16 @@ fn is_vertical_ws(c: char) -> bool {
     )
 }
 
+#[cfg(feature = "ini")]
+fn is_comment(c: char) -> bool {
+    c == '#' || c == ';'
+}
+
+#[cfg(not(feature = "ini"))]
+fn is_comment(c: char) -> bool {
+    c == '#'
+}
+
 /// An iterator that visits all key/value pairs in declaration order, even
 /// key/value pairs that will be overwritten by later statements.
 ///
@@ -173,7 +183,7 @@ impl Iterator for CniParser<'_> {
         loop {
             self.skip_ws();
             let (_, c) = *self.iter.peek()?;
-            if "#;".contains(c) {
+            if is_comment(c) {
                 // comment, continue until next vertical whitespace or EOF
                 while matches!(self.iter.next(), Some((_, c)) if !is_vertical_ws(c)) {}
             } else if c == '[' {

@@ -7,6 +7,6 @@ This crate is dependency-free (except for testing).
 ## Reference Compliance
 Please note that the specification for the CNI format has not yet been stabilized.
 
-`core`: 34/34
-`ini`: fully compliant
-`ext`: tabulation, flexspace
+- `core`: 34/34
+- `ini`: fully compliant (feature flag "ini" enabled by default)
+- `ext`: tabulation, flexspace
