@@ -1,39 +1,39 @@
 //! The traits in this module supply the API that the specification recommends.
 //!
-//! The [`Cni`] trait implementations provide [`SubRec`] and [`SubFlat`].
+//! The [`Cni`] trait implementations provide [`SubTree`] and [`SubLeaves`].
 //!
-//! The functions `ListRec` and `ListFlat` may be produced by using e.g.
-//! [`HashMap::values`] on the results of the [`SubRec`] and [`SubFlat`] functions.
+//! The functions `ListTree` and `ListLeaves` may be produced by using e.g.
+//! [`HashMap::values`] on the results of the [`SubTree`] and [`SubLeaves`] functions.
 //!
-//! The [`CniIter`] trait implementations provide the [`WalkRec`] and
-//! [`WalkFlat`] functions.
+//! The [`CniIter`] trait implementations provide the [`WalkTree`] and
+//! [`WalkLeaves`] functions.
 //!
 //! The function names are provided with the Rust naming convention and are
 //! aliased with more descriptive names.
 //!
 //! [`Cni`]: trait.Cni.html
-//! [`SubRec`]: Cni::in_section
-//! [`SubFlat`]: Cni::children_in_section
+//! [`SubTree`]: Cni::in_section
+//! [`SubLeaves`]: Cni::children_in_section
 //! [`CniIter`]: trait.CniIter.html
-//! [`WalkRec`]: CniIter::in_section
-//! [`WalkFlat`]: CniIter::children_in_section
+//! [`WalkTree`]: CniIter::in_section
+//! [`WalkLeaves`]: CniIter::children_in_section
 //! [`HashMap::values`]: ::std::collections::HashMap::values
 
 use std::cell::RefCell;
 use std::iter::FromIterator;
 
-/// Provides the [`SubRec`] and [`SubFlat`] functions.
+/// Provides the [`SubTree`] and [`SubLeaves`] functions.
 ///
 /// You can use the blanket implementations for this trait by importing it.
 ///
-/// [`SubRec`]: Cni::in_section
-/// [`SubFlat`]: Cni::children_in_section
+/// [`SubTree`]: Cni::in_section
+/// [`SubLeaves`]: Cni::children_in_section
 pub trait Cni: Sized {
     /// Returns a clone of self that only contains child elements of the
     /// specified section. The section name and delimiter will be removed in
     /// the result.
     ///
-    /// The CNI specification calls this `SubRec`.
+    /// The CNI specification calls this `SubTree`.
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -56,7 +56,7 @@ pub trait Cni: Sized {
     /// assert_eq!(parsed.in_section("section"), result);
     /// ```
     ///
-    /// Use e.g. [`HashMap::values`] to get `ListRec`.
+    /// Use e.g. [`HashMap::values`] to get `ListTree`.
     ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
     fn in_section(&self, section: &str) -> Self;
@@ -64,7 +64,7 @@ pub trait Cni: Sized {
     /// specified section. The section name and delimiter will be removed in
     /// the result.
     ///
-    /// The CNI specification calls this `SubFlat`.
+    /// The CNI specification calls this `SubLeaves`.
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -85,7 +85,7 @@ pub trait Cni: Sized {
     ///
     /// assert_eq!(parsed.children_in_section("section"), result);
     /// ```
-    /// Use e.g. [`HashMap::values`] to get `ListFlat`.
+    /// Use e.g. [`HashMap::values`] to get `ListLeaves`.
     ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
     fn children_in_section(&self, section: &str) -> Self;
@@ -94,12 +94,12 @@ pub trait Cni: Sized {
     /// the result.
     ///
     /// This is an alias for [`Cni::in_section`].
-    /// The CNI specification calls this `SubRec`.
+    /// The CNI specification calls this `SubTree`.
     ///
-    /// Use e.g. [`HashMap::values`] to get `ListRec`.
+    /// Use e.g. [`HashMap::values`] to get `ListTree`.
     ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
-    fn sub_rec(&self, section: &str) -> Self {
+    fn sub_tree(&self, section: &str) -> Self {
         self.in_section(section)
     }
     /// Returns a clone of self that only contains direct child elements of the
@@ -107,12 +107,12 @@ pub trait Cni: Sized {
     /// the result.
     ///
     /// This is an alias for [`Cni::children_in_section`].
-    /// The CNI specification calls this `SubFlat`.
+    /// The CNI specification calls this `SubLeaves`.
     ///
-    /// Use e.g. [`HashMap::values`] to get `ListFlat`.
+    /// Use e.g. [`HashMap::values`] to get `ListLeaves`.
     ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
-    fn sub_flat(&self, section: &str) -> Self {
+    fn sub_leaves(&self, section: &str) -> Self {
         self.children_in_section(section)
     }
 }
@@ -123,7 +123,7 @@ where
     K: AsRef<str>,
     V: Clone,
 {
-    /// Implements the `SubRec` API function.
+    /// Implements the `SubTree` API function.
     fn in_section(&self, section: &str) -> Self {
         self.clone()
             .into_iter()
@@ -138,7 +138,7 @@ where
             .collect()
     }
 
-    /// Implements the `SubFlat` API function.
+    /// Implements the `SubLeaves` API function.
     fn children_in_section(&self, section: &str) -> Self {
         self.clone()
             .into_iter()
@@ -157,17 +157,17 @@ where
     }
 }
 
-/// Provides the [`WalkRec`] and [`WalkFlat`] functions.
+/// Provides the [`WalkTree`] and [`WalkLeaves`] functions.
 /// There are blanket implementations for appropriate Iterators.
 ///
-/// [`WalkRec`]: CniIter::in_section
-/// [`WalkFlat`]: CniIter::children_in_section
+/// [`WalkTree`]: CniIter::in_section
+/// [`WalkLeaves`]: CniIter::children_in_section
 pub trait CniIter: Sized {
     /// Returns an iterator that only contains child elements of the
     /// specified section. The section name and delimiter will be included in
     /// the result. The order is unspecified.
     ///
-    /// The CNI specification calls this `WalkRec`.
+    /// The CNI specification calls this `WalkTree`.
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -204,7 +204,7 @@ pub trait CniIter: Sized {
     /// specified section. The section name and delimiter will be included in
     /// the result. The order is unspecified.
     ///
-    /// The CNI specification calls this `WalkFlat`.
+    /// The CNI specification calls this `WalkLeaves`.
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -241,8 +241,8 @@ pub trait CniIter: Sized {
     /// the result. The order is unspecified.
     ///
     /// This is an alias for [`CniIter::in_section`].
-    /// The CNI specification calls this `WalkRec`.
-    fn walk_rec(self, section: &str) -> SectionFilter<Self> {
+    /// The CNI specification calls this `WalkTree`.
+    fn walk_tree(self, section: &str) -> SectionFilter<Self> {
         self.in_section(section)
     }
     /// Returns an iterator that only contains direct child elements of the
@@ -250,8 +250,8 @@ pub trait CniIter: Sized {
     /// the result. The order is unspecified.
     ///
     /// This is an alias for [`CniIter::children_in_section`].
-    /// The CNI specification calls this `WalkFlat`.
-    fn walk_flat(self, section: &str) -> SectionFilter<Self> {
+    /// The CNI specification calls this `WalkLeaves`.
+    fn walk_leaves(self, section: &str) -> SectionFilter<Self> {
         self.children_in_section(section)
     }
 }
@@ -289,7 +289,7 @@ where
 }
 
 impl<I: Iterator> CniIter for I {
-    /// Implements the `WalkRec` API function.
+    /// Implements the `WalkTree` API function.
     fn in_section<'section>(self, section: &str) -> SectionFilter<Self> {
         SectionFilter {
             iter: RefCell::new(self),
@@ -298,7 +298,7 @@ impl<I: Iterator> CniIter for I {
         }
     }
 
-    /// Implements the `WalkFlat` API function.
+    /// Implements the `WalkLeaves` API function.
     fn children_in_section<'section>(self, section: &str) -> SectionFilter<Self> {
         SectionFilter {
             iter: RefCell::new(self),
