@@ -266,6 +266,7 @@ pub trait CniIter: Sized {
 /// [`children_in_section`]: CniIter::children_in_section
 /// [`CniIter`]: trait.CniIter.html
 pub struct SectionFilter<'section, I> {
+    // this has to use interior mutability because of how `next` has to be done
     iter: RefCell<I>,
     section: &'section str,
     only_direct_children: bool,
@@ -280,6 +281,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.borrow_mut().find(|(k, _)| {
+            // using self inside closure requires interior mutability on iter
             let k = k.as_ref();
             k.starts_with(self.section)
                 && k[self.section.len()..].starts_with('.')
