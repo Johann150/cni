@@ -93,7 +93,7 @@ fn is_key(c: char) -> bool {
 /// undefined behaviour.
 ///
 /// If you just want to access the resulting key/value store, take a look at
-/// [`parse`].
+/// [`from_str`].
 pub struct CniParser<'source> {
     source: &'source str,
     /// The iterator stores the current position.
