@@ -3,7 +3,7 @@ macro_rules! cni_test (
 		#[test]
 		fn $name(){
 			assert_eq!(
-				crate::parse(include_str!(concat!($path, ".cni"))).unwrap(),
+				crate::from_str(include_str!(concat!($path, ".cni"))).unwrap(),
 				serde_json::from_str(include_str!(concat!($path, ".json"))).unwrap()
 			);
 		}
@@ -11,7 +11,7 @@ macro_rules! cni_test (
 	($name:ident, $path:expr, fail) => {
 		#[test]
 		fn $name(){
-			assert!(crate::parse(include_str!(concat!($path, "_fail.cni"))).is_err());
+			assert!(crate::from_str(include_str!(concat!($path, "_fail.cni"))).is_err());
 		}
 	};
 );

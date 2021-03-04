@@ -47,7 +47,7 @@ pub trait Cni: Sized {
     /// key = value
     /// ";
     ///
-    /// let parsed = cni::parse(&cni).expect("could not parse CNI");
+    /// let parsed = cni::from_str(&cni).expect("could not parse CNI");
     ///
     /// let mut result = HashMap::new();
     /// result.insert("key".to_string(), "value".to_string());
@@ -78,7 +78,7 @@ pub trait Cni: Sized {
     /// key = value
     /// ";
     ///
-    /// let parsed = cni::parse(&cni).expect("could not parse CNI");
+    /// let parsed = cni::from_str(&cni).expect("could not parse CNI");
     ///
     /// let mut result = HashMap::new();
     /// result.insert("key".to_string(), "value".to_string());
@@ -181,7 +181,7 @@ pub trait CniIter: Sized {
     /// key = value
     /// ";
     ///
-    /// let mut parsed = cni::parse(&cni)
+    /// let mut parsed = cni::from_str(&cni)
     ///     .expect("could not parse CNI")
     ///     .iter()
     ///     .in_section("section")
@@ -218,7 +218,7 @@ pub trait CniIter: Sized {
     /// key = value
     /// ";
     ///
-    /// let mut parsed = cni::parse(&cni)
+    /// let mut parsed = cni::from_str(&cni)
     ///     .expect("could not parse CNI")
     ///     .iter()
     ///     .children_in_section("section")

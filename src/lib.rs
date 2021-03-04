@@ -17,7 +17,7 @@
 //! subsection.key = look, whitespace!
 //! ";
 //!
-//! let parsed = cni::parse(&cni).expect("could not parse CNI");
+//! let parsed = cni::from_str(&cni).expect("could not parse CNI");
 //!
 //! // You can get everything, section names will be prepended to key names.
 //! {
@@ -303,6 +303,6 @@ impl Iterator for CniParser<'_> {
 /// This just constructs a [`CniParser`] and collects it.
 ///
 /// For more information see the [crate level documentation](index.html).
-pub fn parse(text: &str) -> Result<HashMap<String, String>, &'static str> {
+pub fn from_str(text: &str) -> Result<HashMap<String, String>, &'static str> {
     CniParser::new(text).collect()
 }
