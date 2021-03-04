@@ -1,8 +1,7 @@
 //! This is a parser library for the
 //! [CNI configuration format (CoNfiguration Initialization format)][CNI]
 //! by libuconf. The implementation is fully compliant with the `core` and
-//! `ini` part of the specification and with the extensions `flexspace` and
-//! `tabulation`.
+//! `ini` part of the specification and with the extension `more-keys`.
 //!
 //! [CNI]: https://github.com/libuconf/cni/
 //!
@@ -112,57 +111,27 @@ impl<'a> CniParser<'a> {
         }
     }
 
-    /// Skips horizontal whitespace.
-    fn skip_h_ws(&mut self) {
+    /// Skips whitespace.
+    fn skip_ws(&mut self) {
         while matches!(
             self.iter.peek(),
             Some(&(_, c)) if c.is_whitespace()
-                // flexspace removes horizontal/vertical whitespace distinction
-                && (cfg!(feature = "flexspace") || !is_vertical_ws(c))
         ) {
             self.iter.next();
         }
     }
 
-    /// skips whitespace allowed by tabulation extension, or returns an Err if
-    /// it finds whitespace and `tabulation` is disabled.
-    fn skip_tab(&mut self) -> Result<(), &'static str> {
-        if cfg!(any(feature = "tabulation", feature = "flexspace")) {
-            self.skip_h_ws();
-            Ok(())
-        } else {
-            match self.iter.peek() {
-                // this is horizontal whitespace
-                Some(&(_, c)) if c.is_whitespace() && !is_vertical_ws(c) => {
-                    Err("disallowed horizontal whitespace")
-                }
-                _ => Ok(()),
-            }
-        }
-    }
-
-    fn skip_comment(&mut self) -> Result<(), &'static str> {
-        self.skip_h_ws();
-        if self
-            .iter
-            .peek()
-            .map_or(true, |&(_, c)| is_comment(c) || is_vertical_ws(c))
-        {
-            if cfg!(feature = "flexspace")
-                && !matches!(self.iter.peek(), Some(&(_, c)) if is_comment(c))
-            {
-                // flexspace will have moved us to the next line already, so do
-                // not skip if this is not really a comment
-                return Ok(());
-            }
+    fn skip_comment(&mut self) {
+        // skip any whitespace
+        self.skip_ws();
+        // if we arrive at a comment symbol now, skip the comment after it
+        // otherwise do not because we might have also skipped over line ends
+        if matches!(
+            self.iter.peek(),
+            Some(&(_, c)) if is_comment(c)
+        ) {
             // continue until next vertical whitespace or EOF
             while matches!(self.iter.next(), Some((_, c)) if !is_vertical_ws(c)) {}
-            Ok(())
-        } else if cfg!(feature = "flexspace") {
-            // with flexspace, all bets about line endings are off
-            Ok(())
-        } else {
-            Err("expected comment or end of line")
         }
     }
 
@@ -230,9 +199,7 @@ impl Iterator for CniParser<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Err(e) = self.skip_tab() {
-                return Some(Err(e));
-            }
+            self.skip_ws();
             // we should be at start of a line now
             let (_, c) = *self.iter.peek()?;
             if is_vertical_ws(c) {
@@ -240,26 +207,21 @@ impl Iterator for CniParser<'_> {
                 self.iter.next();
                 continue;
             } else if is_comment(c) {
-                if let Err(e) = self.skip_comment() {
-                    return Some(Err(e));
-                }
+                self.skip_comment();
             } else if c == '[' {
                 // section heading
                 self.iter.next(); // consume [
-                if self.skip_tab().is_err() {
-                    return Some(Err("expected section name, found whitespace"));
-                }
+                self.skip_ws();
                 // this key can be empty
                 match self.parse_key() {
                     Ok(key) => self.section = key,
                     Err(e) => return Some(Err(e)),
                 };
-                if self.skip_tab().is_err() || self.iter.next().map_or(true, |(_, c)| c != ']') {
+                self.skip_ws();
+                if self.iter.next().map_or(true, |(_, c)| c != ']') {
                     return Some(Err("expected \"]\""));
                 }
-                if let Err(e) = self.skip_comment() {
-                    return Some(Err(e));
-                }
+                self.skip_comment();
             } else {
                 // this should be a key/value pair
 
@@ -277,20 +239,18 @@ impl Iterator for CniParser<'_> {
                     Err(e) => return Some(Err(e)),
                 };
 
-                self.skip_h_ws();
+                self.skip_ws();
                 if self.iter.next().map_or(true, |(_, c)| c != '=') {
                     return Some(Err("expected \"=\""));
                 }
-                self.skip_h_ws();
+                self.skip_ws();
 
                 let value = match self.parse_value() {
                     Ok(key) => key,
                     Err(e) => return Some(Err(e)),
                 };
 
-                if let Err(e) = self.skip_comment() {
-                    return Some(Err(e));
-                }
+                self.skip_comment();
 
                 break Some(Ok((key, value)));
             }
