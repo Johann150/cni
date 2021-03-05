@@ -1,13 +1,13 @@
 [package]
-name = "cni"
+name = "cni_format"
 version = "0.4.1"
 authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
 edition = "2018"
-description = "parser for the CNI configuration format"
+description = "parser and serializer for the CNI configuration format"
 readme = "README.md"
 repository = "https://github.com/Johann150/cni"
 license = "Unlicense"
-keywords = ["configuration", "ini", "cni"]
+keywords = ["configuration", "ini", "cni", "serialize"]
 categories = ["config", "encoding", "parser-implementations"]
 exclude = ["src/tests/**"]
 
