@@ -5,6 +5,9 @@
 //! The functions `ListTree` and `ListLeaves` may be produced by using e.g.
 //! [`HashMap::values`] on the results of the [`SubTree`] and [`SubLeaves`] functions.
 //!
+//! The functions `KeyTree` and `KeyLeaves` may be produced by using e.g.
+//! [`HashMap::keys`] on the result of the [`SubTree`] and [`SubLeaves`] functions.
+//!
 //! The [`CniIter`] trait implementations provide the [`WalkTree`] and
 //! [`WalkLeaves`] functions.
 //!
@@ -18,6 +21,7 @@
 //! [`WalkTree`]: CniIter::walk_tree
 //! [`WalkLeaves`]: CniIter::walk_leaves
 //! [`HashMap::values`]: ::std::collections::HashMap::values
+//! [`HashMap::keys`]: ::std::collections::HashMap::keys
 
 use std::cell::RefCell;
 use std::iter::FromIterator;
@@ -36,6 +40,7 @@ pub trait Cni: Sized {
     /// The CNI specification calls this `SubTree`.
     ///
     /// Use e.g. [`HashMap::values`] to get `ListTree`.
+    /// Use e.g. [`HashMap::keys`] to get `KeyTree`.
     ///
     /// # Examples
     /// ```
@@ -60,6 +65,7 @@ pub trait Cni: Sized {
     /// ```
     ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
+    /// [`HashMap::keys`]: ::std::collections::HashMap::keys
     fn sub_tree(&self, section: &str) -> Self;
     /// Returns a clone of self that only contains direct child elements of the
     /// specified section. The section name and delimiter will be removed in
@@ -67,6 +73,7 @@ pub trait Cni: Sized {
     ///
     /// The CNI specification calls this `SubLeaves`.
     /// Use e.g. [`HashMap::values`] to get `ListLeaves`.
+    /// Use e.g. [`HashMap::keys`] to get `KeyLeaves`.
     ///
     /// # Examples
     /// ```
@@ -90,6 +97,7 @@ pub trait Cni: Sized {
     /// ```
     ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
+    /// [`HashMap::keys`]: ::std::collections::HashMap::keys
     fn sub_leaves(&self, section: &str) -> Self;
 }
 
