@@ -19,6 +19,8 @@ fn sub_tree() {
     map.insert("b.c".into(), "c".into());
 
     assert_eq!(test_map().sub_tree("a"), map);
+
+    assert_eq!(test_map().sub_tree(""), test_map());
 }
 
 #[test]
@@ -30,6 +32,11 @@ fn sub_leaves() {
     map.insert("c".into(), "c".into());
 
     assert_eq!(test_map().sub_leaves("a"), map);
+
+    map.clear();
+    map.insert("a".into(), "a".into());
+
+    assert_eq!(test_map().sub_leaves(""), map);
 }
 
 #[test]
@@ -45,6 +52,23 @@ fn walk_tree() {
         test_map()
             .iter()
             .walk_tree("a")
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect::<HashMap<String, String>>(),
+        map
+    );
+    assert_eq!(
+        test_map()
+            .walk_tree("a")
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect::<HashMap<String, String>>(),
+        map
+    );
+
+    map.insert("a".into(), "a".into());
+
+    assert_eq!(
+        test_map()
+            .walk_tree("")
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect::<HashMap<String, String>>(),
         map
@@ -66,5 +90,58 @@ fn walk_leaves() {
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect::<HashMap<String, String>>(),
         map
+    );
+    assert_eq!(
+        test_map()
+            .walk_leaves("a")
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect::<HashMap<String, String>>(),
+        map
+    );
+
+    map.clear();
+    map.insert("a".into(), "a".into());
+
+    assert_eq!(
+        test_map()
+            .walk_leaves("")
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect::<HashMap<String, String>>(),
+        map
+    );
+}
+
+#[test]
+fn section_tree() {
+    use crate::api::CniIter;
+
+    assert_eq!(
+        test_map().section_tree("a").into_iter().collect::<Vec<_>>(),
+        vec!["b"]
+    );
+    assert_eq!(
+        test_map().section_tree("").into_iter().collect::<Vec<_>>(),
+        vec!["a", "a.b"]
+    );
+}
+
+#[test]
+fn section_leaves() {
+    use crate::api::CniIter;
+
+    assert_eq!(
+        test_map()
+            .section_leaves("")
+            .into_iter()
+            .collect::<Vec<_>>(),
+        vec!["a"]
+    );
+    println!("---");
+    assert_eq!(
+        test_map()
+            .section_leaves("a")
+            .into_iter()
+            .collect::<Vec<_>>(),
+        vec!["b"]
     );
 }

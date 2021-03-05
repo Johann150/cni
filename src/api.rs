@@ -24,6 +24,7 @@
 //! [`HashMap::keys`]: ::std::collections::HashMap::keys
 
 use std::cell::RefCell;
+use std::collections::BTreeSet;
 use std::iter::FromIterator;
 
 /// Provides the [`SubTree`] and [`SubLeaves`] functions.
@@ -113,7 +114,9 @@ where
             .into_iter()
             .filter_map(|(k, v)| {
                 let k = k.as_ref();
-                if k.starts_with(section) && k[section.len()..].starts_with('.') {
+                if section.is_empty() {
+                    Some((k.to_string(), v))
+                } else if k.starts_with(section) && k[section.len()..].starts_with('.') {
                     Some((k[section.len() + 1..].to_string(), v))
                 } else {
                     None
@@ -128,7 +131,9 @@ where
             .into_iter()
             .filter_map(|(k, v)| {
                 let k = k.as_ref();
-                if k.starts_with(section)
+                if section.is_empty() && !k.contains('.') {
+                    Some((k.to_string(), v))
+                } else if k.starts_with(section)
                     && k[section.len()..].starts_with('.')
                     && !k[section.len() + 1..].contains('.')
                 {
@@ -207,7 +212,7 @@ pub trait CniIter: Sized {
     /// let mut parsed = cni_format::from_str(&cni)
     ///     .expect("could not parse CNI")
     ///     .iter()
-    ///     .section_leaves("section")
+    ///     .walk_leaves("section")
     ///     // have to clone here because we want to store the result
     ///     .map(|(k, v)| (k.clone(), v.clone()))
     ///     .collect::<Vec<_>>();
@@ -222,6 +227,20 @@ pub trait CniIter: Sized {
     /// );
     /// ```
     fn walk_leaves(self, section: &str) -> SectionFilter<Self::Iter>;
+    /// Returns the names of subsection of the specified section. Note that
+    /// this does not necessarily mean that the respective section names are in
+    /// the source as section headers. This will also include the specified
+    /// section name.
+    ///
+    /// The CNI specification calls this `SectionTree`.
+    fn section_tree(&self, section: &str) -> BTreeSet<String>;
+    /// Returns the names of direct subsections of the specified section. Note
+    /// that this does not necessarily mean that the respective section names
+    /// are in the source as section headers. This will also include the
+    /// specified section name.
+    ///
+    /// The CNI specification calls this `SectionTree`.
+    fn section_leaves(&self, section: &str) -> BTreeSet<String>;
 }
 
 /// An iterator that filters the elements of a key-value iterator for keys in
@@ -252,7 +271,7 @@ where
             // using self inside closure requires interior mutability on iter
             let k = k.as_ref();
             k.starts_with(self.section)
-                && k[self.section.len()..].starts_with('.')
+                && (k[self.section.len()..].starts_with('.') || self.section.is_empty())
                 && !(self.only_direct_children && k[self.section.len() + 1..].contains('.'))
         })
     }
@@ -282,5 +301,72 @@ where
             section,
             only_direct_children: true,
         }
+    }
+
+    /// Implements the `SectionTree` API function.
+    fn section_tree(&self, section: &str) -> BTreeSet<String> {
+        // TODO: `keys` could be simplified if nightly feature map_first_last is
+        // stabilized, see <https://github.com/rust-lang/rust/issues/62924>
+        let mut keys = vec![];
+        let mut result = BTreeSet::new();
+        keys.extend(
+            self.clone()
+                .walk_tree(section)
+                // ignore current section's name
+                .map(|(k, _)| {
+                    if section.is_empty() {
+                        k.as_ref().to_string()
+                    } else {
+                        k.as_ref()[section.len() + 1..].to_string()
+                    }
+                }),
+        );
+
+        while let Some(key) = keys.pop() {
+            if let Some(pos) = key.rfind('.') {
+                let section = key.split_at(pos).0.to_string();
+                if !keys.contains(&section) && !result.contains(&section) {
+                    keys.push(section.clone());
+                }
+                result.insert(section.to_string());
+            }
+        }
+
+        result
+    }
+
+    fn section_leaves(&self, section: &str) -> BTreeSet<String> {
+        // TODO: `keys` could be simplified if nightly feature map_first_last is
+        // stabilized, see <https://github.com/rust-lang/rust/issues/62924>
+        let mut keys = vec![];
+        let mut result = BTreeSet::new();
+        keys.extend(
+            self.clone()
+                .walk_tree(section)
+                // ignore current section's name
+                .map(|(k, _)| {
+                    if section.is_empty() {
+                        k.as_ref().to_string()
+                    } else {
+                        k.as_ref()[section.len() + 1..].to_string()
+                    }
+                }),
+        );
+        dbg!(&keys);
+
+        while let Some(key) = keys.pop() {
+            if let Some(pos) = key.rfind('.') {
+                let section = key.split_at(pos).0.to_string();
+                if section.contains('.') {
+                    continue;
+                }
+                if !keys.contains(&section) && !result.contains(&section) {
+                    keys.push(section.clone());
+                }
+                result.insert(section.to_string());
+            }
+        }
+
+        result
     }
 }
