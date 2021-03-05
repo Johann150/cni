@@ -12,11 +12,11 @@
 //! aliased with more descriptive names.
 //!
 //! [`Cni`]: trait.Cni.html
-//! [`SubTree`]: Cni::in_section
-//! [`SubLeaves`]: Cni::children_in_section
+//! [`SubTree`]: Cni::sub_tree
+//! [`SubLeaves`]: Cni::sub_leaves
 //! [`CniIter`]: trait.CniIter.html
-//! [`WalkTree`]: CniIter::in_section
-//! [`WalkLeaves`]: CniIter::children_in_section
+//! [`WalkTree`]: CniIter::walk_tree
+//! [`WalkLeaves`]: CniIter::walk_leaves
 //! [`HashMap::values`]: ::std::collections::HashMap::values
 
 use std::cell::RefCell;
@@ -26,8 +26,8 @@ use std::iter::FromIterator;
 ///
 /// You can use the blanket implementations for this trait by importing it.
 ///
-/// [`SubTree`]: Cni::in_section
-/// [`SubLeaves`]: Cni::children_in_section
+/// [`SubTree`]: Cni::sub_tree
+/// [`SubLeaves`]: Cni::sub_leaves
 pub trait Cni: Sized {
     /// Returns a clone of self that only contains child elements of the
     /// specified section. The section name and delimiter will be removed in
@@ -35,9 +35,12 @@ pub trait Cni: Sized {
     ///
     /// The CNI specification calls this `SubTree`.
     ///
+    /// Use e.g. [`HashMap::values`] to get `ListTree`.
+    ///
+    /// # Examples
     /// ```
     /// use std::collections::HashMap;
-    /// use cni::api::Cni;
+    /// use cni_format::api::Cni;
     ///
     /// let cni = r"
     /// [section]
@@ -47,28 +50,28 @@ pub trait Cni: Sized {
     /// key = value
     /// ";
     ///
-    /// let parsed = cni::from_str(&cni).expect("could not parse CNI");
+    /// let parsed = cni_format::from_str(&cni).expect("could not parse CNI");
     ///
     /// let mut result = HashMap::new();
     /// result.insert("key".to_string(), "value".to_string());
     /// result.insert("subsection.key".to_string(), "other value".to_string());
     ///
-    /// assert_eq!(parsed.in_section("section"), result);
+    /// assert_eq!(parsed.sub_tree("section"), result);
     /// ```
     ///
-    /// Use e.g. [`HashMap::values`] to get `ListTree`.
-    ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
-    fn in_section(&self, section: &str) -> Self;
+    fn sub_tree(&self, section: &str) -> Self;
     /// Returns a clone of self that only contains direct child elements of the
     /// specified section. The section name and delimiter will be removed in
     /// the result.
     ///
     /// The CNI specification calls this `SubLeaves`.
+    /// Use e.g. [`HashMap::values`] to get `ListLeaves`.
     ///
+    /// # Examples
     /// ```
     /// use std::collections::HashMap;
-    /// use cni::api::Cni;
+    /// use cni_format::api::Cni;
     ///
     /// let cni = r"
     /// [section]
@@ -78,43 +81,16 @@ pub trait Cni: Sized {
     /// key = value
     /// ";
     ///
-    /// let parsed = cni::from_str(&cni).expect("could not parse CNI");
+    /// let parsed = cni_format::from_str(&cni).expect("could not parse CNI");
     ///
     /// let mut result = HashMap::new();
     /// result.insert("key".to_string(), "value".to_string());
     ///
-    /// assert_eq!(parsed.children_in_section("section"), result);
+    /// assert_eq!(parsed.sub_leaves("section"), result);
     /// ```
-    /// Use e.g. [`HashMap::values`] to get `ListLeaves`.
     ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
-    fn children_in_section(&self, section: &str) -> Self;
-    /// Returns a clone of self that only contains child elements of the
-    /// specified section. The section name and delimiter will be removed in
-    /// the result.
-    ///
-    /// This is an alias for [`Cni::in_section`].
-    /// The CNI specification calls this `SubTree`.
-    ///
-    /// Use e.g. [`HashMap::values`] to get `ListTree`.
-    ///
-    /// [`HashMap::values`]: ::std::collections::HashMap::values
-    fn sub_tree(&self, section: &str) -> Self {
-        self.in_section(section)
-    }
-    /// Returns a clone of self that only contains direct child elements of the
-    /// specified section. The section name and delimiter will be removed in
-    /// the result.
-    ///
-    /// This is an alias for [`Cni::children_in_section`].
-    /// The CNI specification calls this `SubLeaves`.
-    ///
-    /// Use e.g. [`HashMap::values`] to get `ListLeaves`.
-    ///
-    /// [`HashMap::values`]: ::std::collections::HashMap::values
-    fn sub_leaves(&self, section: &str) -> Self {
-        self.children_in_section(section)
-    }
+    fn sub_leaves(&self, section: &str) -> Self;
 }
 
 impl<I, K, V> Cni for I
@@ -124,7 +100,7 @@ where
     V: Clone,
 {
     /// Implements the `SubTree` API function.
-    fn in_section(&self, section: &str) -> Self {
+    fn sub_tree(&self, section: &str) -> Self {
         self.clone()
             .into_iter()
             .filter_map(|(k, v)| {
@@ -139,7 +115,7 @@ where
     }
 
     /// Implements the `SubLeaves` API function.
-    fn children_in_section(&self, section: &str) -> Self {
+    fn sub_leaves(&self, section: &str) -> Self {
         self.clone()
             .into_iter()
             .filter_map(|(k, v)| {
@@ -160,9 +136,11 @@ where
 /// Provides the [`WalkTree`] and [`WalkLeaves`] functions.
 /// There are blanket implementations for appropriate Iterators.
 ///
-/// [`WalkTree`]: CniIter::in_section
-/// [`WalkLeaves`]: CniIter::children_in_section
+/// [`WalkTree`]: CniIter::walk_tree
+/// [`WalkLeaves`]: CniIter::walk_leaves
 pub trait CniIter: Sized {
+    /// The type of the underlying iterator.
+    type Iter;
     /// Returns an iterator that only contains child elements of the
     /// specified section. The section name and delimiter will be included in
     /// the result. The order is unspecified.
@@ -171,7 +149,7 @@ pub trait CniIter: Sized {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// use cni::api::CniIter;
+    /// use cni_format::api::CniIter;
     ///
     /// let cni = r"
     /// [section]
@@ -181,10 +159,10 @@ pub trait CniIter: Sized {
     /// key = value
     /// ";
     ///
-    /// let mut parsed = cni::from_str(&cni)
+    /// let mut parsed = cni_format::from_str(&cni)
     ///     .expect("could not parse CNI")
     ///     .iter()
-    ///     .in_section("section")
+    ///     .walk_tree("section")
     ///     // have to clone here because we want to store the result
     ///     .map(|(k, v)| (k.clone(), v.clone()))
     ///     .collect::<Vec<_>>();
@@ -199,7 +177,7 @@ pub trait CniIter: Sized {
     ///     ]
     /// );
     /// ```
-    fn in_section(self, section: &str) -> SectionFilter<Self>;
+    fn walk_tree(self, section: &str) -> SectionFilter<Self::Iter>;
     /// Returns an iterator that only contains direct child elements of the
     /// specified section. The section name and delimiter will be included in
     /// the result. The order is unspecified.
@@ -208,7 +186,7 @@ pub trait CniIter: Sized {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// use cni::api::CniIter;
+    /// use cni_format::api::CniIter;
     ///
     /// let cni = r"
     /// [section]
@@ -218,10 +196,10 @@ pub trait CniIter: Sized {
     /// key = value
     /// ";
     ///
-    /// let mut parsed = cni::from_str(&cni)
+    /// let mut parsed = cni_format::from_str(&cni)
     ///     .expect("could not parse CNI")
     ///     .iter()
-    ///     .children_in_section("section")
+    ///     .section_leaves("section")
     ///     // have to clone here because we want to store the result
     ///     .map(|(k, v)| (k.clone(), v.clone()))
     ///     .collect::<Vec<_>>();
@@ -235,35 +213,17 @@ pub trait CniIter: Sized {
     ///     ]
     /// );
     /// ```
-    fn children_in_section(self, section: &str) -> SectionFilter<Self>;
-    /// Returns an iterator that only contains child elements of the
-    /// specified section. The section name and delimiter will be included in
-    /// the result. The order is unspecified.
-    ///
-    /// This is an alias for [`CniIter::in_section`].
-    /// The CNI specification calls this `WalkTree`.
-    fn walk_tree(self, section: &str) -> SectionFilter<Self> {
-        self.in_section(section)
-    }
-    /// Returns an iterator that only contains direct child elements of the
-    /// specified section. The section name and delimiter will be included
-    /// the result. The order is unspecified.
-    ///
-    /// This is an alias for [`CniIter::children_in_section`].
-    /// The CNI specification calls this `WalkLeaves`.
-    fn walk_leaves(self, section: &str) -> SectionFilter<Self> {
-        self.children_in_section(section)
-    }
+    fn walk_leaves(self, section: &str) -> SectionFilter<Self::Iter>;
 }
 
 /// An iterator that filters the elements of a key-value iterator for keys in
 /// a specific section.
 ///
-/// This `struct` is created by the [`in_section`]  and [`children_in_section`]
+/// This `struct` is created by the [`walk_tree`]  and [`walk_leaves`]
 /// methods on [`CniIter`]. See its documentation for more.
 ///
-/// [`in_section`]: CniIter::in_section
-/// [`children_in_section`]: CniIter::children_in_section
+/// [`walk_tree`]: CniIter::walk_tree
+/// [`walk_leaves`]: CniIter::walk_leaves
 /// [`CniIter`]: trait.CniIter.html
 pub struct SectionFilter<'section, I> {
     // this has to use interior mutability because of how `next` has to be done
@@ -290,20 +250,27 @@ where
     }
 }
 
-impl<I: Iterator> CniIter for I {
+impl<T, I, K, V> CniIter for T
+where
+    T: IntoIterator<IntoIter = I> + Clone,
+    I: Iterator<Item = (K, V)>,
+    K: AsRef<str>,
+{
+    type Iter = I;
+
     /// Implements the `WalkTree` API function.
-    fn in_section<'section>(self, section: &str) -> SectionFilter<Self> {
+    fn walk_tree(self, section: &str) -> SectionFilter<I> {
         SectionFilter {
-            iter: RefCell::new(self),
+            iter: RefCell::new(self.into_iter()),
             section,
             only_direct_children: false,
         }
     }
 
     /// Implements the `WalkLeaves` API function.
-    fn children_in_section<'section>(self, section: &str) -> SectionFilter<Self> {
+    fn walk_leaves(self, section: &str) -> SectionFilter<I> {
         SectionFilter {
-            iter: RefCell::new(self),
+            iter: RefCell::new(self.into_iter()),
             section,
             only_direct_children: true,
         }

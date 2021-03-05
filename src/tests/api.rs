@@ -10,7 +10,7 @@ fn test_map() -> HashMap<String, String> {
 }
 
 #[test]
-fn sub_rec() {
+fn sub_tree() {
     use crate::api::Cni;
 
     let mut map = HashMap::<String, String>::new();
@@ -18,22 +18,22 @@ fn sub_rec() {
     map.insert("c".into(), "c".into());
     map.insert("b.c".into(), "c".into());
 
-    assert_eq!(test_map().in_section("a"), map);
+    assert_eq!(test_map().sub_tree("a"), map);
 }
 
 #[test]
-fn sub_flat() {
+fn sub_leaves() {
     use crate::api::Cni;
 
     let mut map = HashMap::<String, String>::new();
     map.insert("b".into(), "b".into());
     map.insert("c".into(), "c".into());
 
-    assert_eq!(test_map().children_in_section("a"), map);
+    assert_eq!(test_map().sub_leaves("a"), map);
 }
 
 #[test]
-fn walk_rec() {
+fn walk_tree() {
     use crate::api::CniIter;
 
     let mut map = HashMap::<String, String>::new();
@@ -44,7 +44,7 @@ fn walk_rec() {
     assert_eq!(
         test_map()
             .iter()
-            .in_section("a")
+            .walk_tree("a")
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect::<HashMap<String, String>>(),
         map
@@ -52,7 +52,7 @@ fn walk_rec() {
 }
 
 #[test]
-fn walk_flat() {
+fn walk_leaves() {
     use crate::api::CniIter;
 
     let mut map = HashMap::<String, String>::new();
@@ -62,7 +62,7 @@ fn walk_flat() {
     assert_eq!(
         test_map()
             .iter()
-            .children_in_section("a")
+            .walk_leaves("a")
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect::<HashMap<String, String>>(),
         map

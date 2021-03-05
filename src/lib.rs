@@ -30,7 +30,7 @@
 //! subsection.key = look, whitespace!
 //! ";
 //!
-//! let parsed = cni::from_str(&cni).expect("could not parse CNI");
+//! let parsed = cni_format::from_str(&cni).expect("could not parse CNI");
 //!
 //! // You can get everything, section names will be prepended to key names.
 //! {
@@ -50,10 +50,10 @@
 //!     section.insert("subsection.key".to_string(), "look, whitespace!".to_string());
 //!
 //!     // use trait that adds CNI related functionality
-//!     use cni::api::Cni;
+//!     use cni_format::api::Cni;
 //!
 //!     // filter out values in section "section"
-//!     assert_eq!(parsed.in_section("section"), section);
+//!     assert_eq!(parsed.sub_tree("section"), section);
 //! }
 //!
 //! // You can get child nodes from one section only, excluding subsections.
@@ -63,10 +63,10 @@
 //!     section.insert("rkey".to_string(), "raw value with ` escaped".to_string());
 //!
 //!     // use trait that adds CNI related functionality
-//!     use cni::api::Cni;
+//!     use cni_format::api::Cni;
 //!
 //!     // filter out values in section "section", but not in subsections
-//!     assert_eq!(parsed.children_in_section("section"), section);
+//!     assert_eq!(parsed.sub_leaves("section"), section);
 //! }
 //! ```
 

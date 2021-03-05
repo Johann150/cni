@@ -21,12 +21,12 @@ fn format_value(value: String) -> String {
 /// map.insert("a", "b");
 ///
 /// assert_eq!(
-///     &cni::to_str(map),
+///     &cni_format::to_str(map),
 ///     "a = b\n"
 /// );
 ///
 /// assert_eq!(
-///     &cni::to_str(vec![
+///     &cni_format::to_str(vec![
 ///         ("a.b", "c"),
 ///     ]),
 ///     "[a]\nb = c\n"
