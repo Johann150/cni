@@ -1,5 +1,19 @@
+#![forbid(unsafe_code)]
+#![warn(
+    invalid_html_tags,
+    keyword_idents,
+    missing_docs,
+    non_ascii_idents,
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_crate_dependencies,
+    unused_extern_crates,
+    unused_import_braces,
+    clippy::cargo,
+    clippy::pedantic
+)]
 //! This is a parser library for the
-//! [CNI configuration format (CoNfiguration Initialization format)][CNI]
+//! [CNI configuration format (**C**o**N**figuration **I**nitialization format)][CNI]
 //! by libuconf. The implementation is fully compliant with the `core` and
 //! `ini` part of the specification and with the extension `more-keys`.
 //!
@@ -106,6 +120,8 @@ pub struct CniParser<'source> {
 }
 
 impl<'a> CniParser<'a> {
+    /// Creates a new `CniParser` that will parse the given CNI format text.
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
     pub fn new(source: &'a str) -> Self {
         Self {
             source,
@@ -266,6 +282,10 @@ impl Iterator for CniParser<'_> {
 /// This just constructs a [`CniParser`] and collects it.
 ///
 /// For more information see the [crate level documentation](index.html).
+///
+/// # Errors
+/// Returns an `Err` if the given text is not in a valid CNI format. The `Err`
+/// will contain a message explaining the error.
 pub fn from_str(text: &str) -> Result<HashMap<String, String>, &'static str> {
     CniParser::new(text).collect()
 }
