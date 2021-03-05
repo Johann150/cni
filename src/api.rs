@@ -15,15 +15,15 @@ use std::iter::FromIterator;
 ///
 /// You can use the blanket implementations for this trait by importing it.
 ///
-/// [`SubTree`]: Cni::sub_tree
-/// [`SubLeaves`]: Cni::sub_leaves
-/// [`WalkTree`]: Cni::walk_tree
-/// [`WalkLeaves`]: Cni::walk_leaves
-/// [`SectionTree`]: Cni::section_tree
-/// [`SectionLeaves`]: Cni::section_leaves
+/// [`SubTree`]: CniExt::sub_tree
+/// [`SubLeaves`]: CniExt::sub_leaves
+/// [`WalkTree`]: CniExt::walk_tree
+/// [`WalkLeaves`]: CniExt::walk_leaves
+/// [`SectionTree`]: CniExt::section_tree
+/// [`SectionLeaves`]: CniExt::section_leaves
 /// [`HashMap::values`]: ::std::collections::HashMap::values
 /// [`HashMap::keys`]: ::std::collections::HashMap::keys
-pub trait Cni<V>: Sized {
+pub trait CniExt<V>: Sized {
     /// The type of the underlying iterator produced by some functions.
     type Iter;
     /// Returns a clone of self that only contains child elements of the
@@ -38,7 +38,7 @@ pub trait Cni<V>: Sized {
     /// # Examples
     /// ```
     /// use std::collections::HashMap;
-    /// use cni_format::api::Cni;
+    /// use cni_format::CniExt;
     ///
     /// let cni = r"
     /// [section]
@@ -73,7 +73,7 @@ pub trait Cni<V>: Sized {
     /// # Examples
     /// ```
     /// use std::collections::HashMap;
-    /// use cni_format::api::Cni;
+    /// use cni_format::CniExt;
     ///
     /// let cni = r"
     /// [section]
@@ -102,9 +102,10 @@ pub trait Cni<V>: Sized {
     ///
     /// The CNI specification calls this `WalkTree`.
     ///
+    /// # Examples
     /// ```
     /// use std::collections::HashMap;
-    /// use cni_format::api::Cni;
+    /// use cni_format::CniExt;
     ///
     /// let cni = r"
     /// [section]
@@ -139,9 +140,10 @@ pub trait Cni<V>: Sized {
     ///
     /// The CNI specification calls this `WalkLeaves`.
     ///
+    /// # Examples
     /// ```
     /// use std::collections::HashMap;
-    /// use cni_format::api::Cni;
+    /// use cni_format::CniExt;
     ///
     /// let cni = r"
     /// [section]
@@ -171,25 +173,76 @@ pub trait Cni<V>: Sized {
     fn walk_leaves(self, section: &str) -> SectionFilter<Self::Iter>;
     /// Returns the names of subsection of the specified section. Note that
     /// this does not necessarily mean that the respective section names are in
-    /// the source as section headers. This will also include the specified
-    /// section name.
+    /// the source as section headers.
     ///
     /// The CNI specification calls this `SectionTree`.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::collections::HashMap;
+    /// use cni_format::CniExt;
+    ///
+    /// let cni = r"
+    /// [section]
+    /// key = value
+    /// subsection.key = other value
+    /// [otherSection]
+    /// key = value
+    /// ";
+    ///
+    /// let mut sections = cni_format::from_str(&cni)
+    ///     .expect("could not parse CNI")
+    ///     .iter()
+    ///     .section_tree("section");
+    ///
+    /// assert_eq!(
+    ///     sections.into_iter().collect::<Vec<_>>(),
+    ///     vec![
+    ///         "subsection".to_string(),
+    ///     ]
+    /// );
+    /// ```
     fn section_tree(&self, section: &str) -> BTreeSet<String>
     where
         Self: Clone;
     /// Returns the names of direct subsections of the specified section. Note
     /// that this does not necessarily mean that the respective section names
-    /// are in the source as section headers. This will also include the
-    /// specified section name.
+    /// are in the source as section headers.
     ///
     /// The CNI specification calls this `SectionTree`.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::collections::HashMap;
+    /// use cni_format::CniExt;
+    ///
+    /// let cni = r"
+    /// [section]
+    /// key = value
+    /// subsection.key = other value
+    /// [otherSection]
+    /// key = value
+    /// ";
+    ///
+    /// let mut sections = cni_format::from_str(&cni)
+    ///     .expect("could not parse CNI")
+    ///     .iter()
+    ///     // get direct subsections of top level section
+    ///     .section_leaves("");
+    ///
+    /// assert_eq!(
+    ///     sections.into_iter().collect::<Vec<_>>(),
+    ///     vec![
+    ///         "otherSection".to_string(), "section".to_string(),
+    ///     ]
+    /// );
+    /// ```
     fn section_leaves(&self, section: &str) -> BTreeSet<String>
     where
         Self: Clone;
 }
 
-impl<T, I, K, V> Cni<V> for T
+impl<T, I, K, V> CniExt<V> for T
 where
     T: IntoIterator<IntoIter = I>,
     I: Iterator<Item = (K, V)>,
@@ -335,10 +388,10 @@ where
 /// a specific section.
 ///
 /// This `struct` is created by the [`walk_tree`]  and [`walk_leaves`]
-/// methods on [`Cni`]. See its documentation for more.
+/// methods on [`CniExt`]. See its documentation for more.
 ///
-/// [`walk_tree`]: Cni::walk_tree
-/// [`walk_leaves`]: Cni::walk_leaves
+/// [`walk_tree`]: CniExt::walk_tree
+/// [`walk_leaves`]: CniExt::walk_leaves
 pub struct SectionFilter<'section, I> {
     // this has to use interior mutability because of how `next` has to be done
     iter: RefCell<I>,

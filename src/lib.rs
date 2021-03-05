@@ -14,12 +14,14 @@
 )]
 //! This is a parser library for the
 //! [CNI configuration format (**C**o**N**figuration **I**nitialization format)][CNI]
-//! by libuconf. The implementation is fully compliant with the `core` and
+//! by libuconf.
+//! # CNI standard compliance
+//! The implementation is fully compliant with the `core` and
 //! `ini` part of the specification and with the extension `more-keys`.
 //!
 //! [CNI]: https://github.com/libuconf/cni/
 //!
-//! You can use the library like this:
+//! # Examples
 //! ```
 //! use std::collections::HashMap;
 //!
@@ -50,7 +52,7 @@
 //!     section.insert("subsection.key".to_string(), "look, whitespace!".to_string());
 //!
 //!     // use trait that adds CNI related functionality
-//!     use cni_format::api::Cni;
+//!     use cni_format::CniExt;
 //!
 //!     // filter out values in section "section"
 //!     assert_eq!(parsed.sub_tree("section"), section);
@@ -63,7 +65,7 @@
 //!     section.insert("rkey".to_string(), "raw value with ` escaped".to_string());
 //!
 //!     // use trait that adds CNI related functionality
-//!     use cni_format::api::Cni;
+//!     use cni_format::CniExt;
 //!
 //!     // filter out values in section "section", but not in subsections
 //!     assert_eq!(parsed.sub_leaves("section"), section);
@@ -78,7 +80,8 @@ use std::str::CharIndices;
 #[cfg(test)]
 mod tests;
 
-pub mod api;
+mod api;
+pub use api::{CniExt, SectionFilter};
 mod format;
 
 pub use format::to_str;
