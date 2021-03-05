@@ -216,9 +216,17 @@ impl<'a> CniParser<'a> {
     }
 }
 
+impl<'a> From<&'a str> for CniParser<'a> {
+    /// Create a `CniParser` from a string slice.
+	fn from(text: &'a str) -> CniParser<'a> {
+		Self::new(text)
+	}
+}
+
 impl Iterator for CniParser<'_> {
     type Item = Result<(String, String), &'static str>;
 
+    /// Try to parse until the next key/value pair.
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             self.skip_ws();
