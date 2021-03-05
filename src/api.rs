@@ -1,39 +1,31 @@
-//! The traits in this module supply the API that the specification recommends.
+//! This module supplies the API that the CNI specification recommends.
 //!
-//! The [`Cni`] trait implementations provide [`SubTree`] and [`SubLeaves`].
-//!
-//! The functions `ListTree` and `ListLeaves` may be produced by using e.g.
-//! [`HashMap::values`] on the results of the [`SubTree`] and [`SubLeaves`] functions.
-//!
-//! The functions `KeyTree` and `KeyLeaves` may be produced by using e.g.
-//! [`HashMap::keys`] on the result of the [`SubTree`] and [`SubLeaves`] functions.
-//!
-//! The [`CniIter`] trait implementations provide the [`WalkTree`] and
-//! [`WalkLeaves`] functions.
-//!
-//! The function names are provided with the Rust naming convention and are
-//! aliased with more descriptive names.
-//!
-//! [`Cni`]: trait.Cni.html
-//! [`SubTree`]: Cni::sub_tree
-//! [`SubLeaves`]: Cni::sub_leaves
-//! [`CniIter`]: trait.CniIter.html
-//! [`WalkTree`]: CniIter::walk_tree
-//! [`WalkLeaves`]: CniIter::walk_leaves
-//! [`HashMap::values`]: ::std::collections::HashMap::values
-//! [`HashMap::keys`]: ::std::collections::HashMap::keys
+//! The function names are provided with the Rust naming convention.
 
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
 
-/// Provides the [`SubTree`] and [`SubLeaves`] functions.
+/// Provides the recommended API functions:
+/// * [`SubTree`] and [`SubLeaves`]
+///     * `ListTree` and `ListLeaves` by using e.g. [`HashMap::values`] on this
+///     * `KeyTree` and `KeyLeaves` by using e.g. [`HashMap::keys`] on this
+/// * [`WalkTree`] and [`WalkLeaves`]
+/// * [`SectionTree`] and [`SectionLeaves`]
 ///
 /// You can use the blanket implementations for this trait by importing it.
 ///
 /// [`SubTree`]: Cni::sub_tree
 /// [`SubLeaves`]: Cni::sub_leaves
-pub trait Cni: Sized {
+/// [`WalkTree`]: Cni::walk_tree
+/// [`WalkLeaves`]: Cni::walk_leaves
+/// [`SectionTree`]: Cni::section_tree
+/// [`SectionLeaves`]: Cni::section_leaves
+/// [`HashMap::values`]: ::std::collections::HashMap::values
+/// [`HashMap::keys`]: ::std::collections::HashMap::keys
+pub trait Cni<V>: Sized {
+    /// The type of the underlying iterator produced by some functions.
+    type Iter;
     /// Returns a clone of self that only contains child elements of the
     /// specified section. The section name and delimiter will be removed in
     /// the result.
@@ -67,7 +59,9 @@ pub trait Cni: Sized {
     ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
     /// [`HashMap::keys`]: ::std::collections::HashMap::keys
-    fn sub_tree(&self, section: &str) -> Self;
+    fn sub_tree(&self, section: &str) -> Self
+    where
+        Self: Clone + FromIterator<(String, V)>;
     /// Returns a clone of self that only contains direct child elements of the
     /// specified section. The section name and delimiter will be removed in
     /// the result.
@@ -99,61 +93,9 @@ pub trait Cni: Sized {
     ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
     /// [`HashMap::keys`]: ::std::collections::HashMap::keys
-    fn sub_leaves(&self, section: &str) -> Self;
-}
-
-impl<I, K, V> Cni for I
-where
-    I: IntoIterator<Item = (K, V)> + Clone + FromIterator<(String, V)>,
-    K: AsRef<str>,
-    V: Clone,
-{
-    /// Implements the `SubTree` API function.
-    fn sub_tree(&self, section: &str) -> Self {
-        self.clone()
-            .into_iter()
-            .filter_map(|(k, v)| {
-                let k = k.as_ref();
-                if section.is_empty() {
-                    Some((k.to_string(), v))
-                } else if k.starts_with(section) && k[section.len()..].starts_with('.') {
-                    Some((k[section.len() + 1..].to_string(), v))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    /// Implements the `SubLeaves` API function.
-    fn sub_leaves(&self, section: &str) -> Self {
-        self.clone()
-            .into_iter()
-            .filter_map(|(k, v)| {
-                let k = k.as_ref();
-                if section.is_empty() && !k.contains('.') {
-                    Some((k.to_string(), v))
-                } else if k.starts_with(section)
-                    && k[section.len()..].starts_with('.')
-                    && !k[section.len() + 1..].contains('.')
-                {
-                    Some((k[section.len() + 1..].to_string(), v))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-}
-
-/// Provides the [`WalkTree`] and [`WalkLeaves`] functions.
-/// There are blanket implementations for appropriate Iterators.
-///
-/// [`WalkTree`]: CniIter::walk_tree
-/// [`WalkLeaves`]: CniIter::walk_leaves
-pub trait CniIter: Sized {
-    /// The type of the underlying iterator.
-    type Iter;
+    fn sub_leaves(&self, section: &str) -> Self
+    where
+        Self: Clone + FromIterator<(String, V)>;
     /// Returns an iterator that only contains child elements of the
     /// specified section. The section name and delimiter will be included in
     /// the result. The order is unspecified.
@@ -162,7 +104,7 @@ pub trait CniIter: Sized {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// use cni_format::api::CniIter;
+    /// use cni_format::api::Cni;
     ///
     /// let cni = r"
     /// [section]
@@ -199,7 +141,7 @@ pub trait CniIter: Sized {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// use cni_format::api::CniIter;
+    /// use cni_format::api::Cni;
     ///
     /// let cni = r"
     /// [section]
@@ -233,25 +175,170 @@ pub trait CniIter: Sized {
     /// section name.
     ///
     /// The CNI specification calls this `SectionTree`.
-    fn section_tree(&self, section: &str) -> BTreeSet<String>;
+    fn section_tree(&self, section: &str) -> BTreeSet<String>
+    where
+        Self: Clone;
     /// Returns the names of direct subsections of the specified section. Note
     /// that this does not necessarily mean that the respective section names
     /// are in the source as section headers. This will also include the
     /// specified section name.
     ///
     /// The CNI specification calls this `SectionTree`.
-    fn section_leaves(&self, section: &str) -> BTreeSet<String>;
+    fn section_leaves(&self, section: &str) -> BTreeSet<String>
+    where
+        Self: Clone;
+}
+
+impl<T, I, K, V> Cni<V> for T
+where
+    T: IntoIterator<IntoIter = I>,
+    I: Iterator<Item = (K, V)>,
+    K: AsRef<str>,
+{
+    type Iter = I;
+
+    /// Implements the `SubTree` API function.
+    fn sub_tree(&self, section: &str) -> Self
+    where
+        Self: Clone + FromIterator<(String, V)>,
+    {
+        self.clone()
+            .into_iter()
+            .filter_map(|(k, v)| {
+                let k = k.as_ref();
+                if section.is_empty() {
+                    Some((k.to_string(), v))
+                } else if k.starts_with(section) && k[section.len()..].starts_with('.') {
+                    Some((k[section.len() + 1..].to_string(), v))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Implements the `SubLeaves` API function.
+    fn sub_leaves(&self, section: &str) -> Self
+    where
+        Self: Clone + FromIterator<(String, V)>,
+    {
+        self.clone()
+            .into_iter()
+            .filter_map(|(k, v)| {
+                let k = k.as_ref();
+                if section.is_empty() && !k.contains('.') {
+                    Some((k.to_string(), v))
+                } else if k.starts_with(section)
+                    && k[section.len()..].starts_with('.')
+                    && !k[section.len() + 1..].contains('.')
+                {
+                    Some((k[section.len() + 1..].to_string(), v))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Implements the `WalkTree` API function.
+    fn walk_tree(self, section: &str) -> SectionFilter<I> {
+        SectionFilter {
+            iter: RefCell::new(self.into_iter()),
+            section,
+            only_direct_children: false,
+        }
+    }
+
+    /// Implements the `WalkLeaves` API function.
+    fn walk_leaves(self, section: &str) -> SectionFilter<I> {
+        SectionFilter {
+            iter: RefCell::new(self.into_iter()),
+            section,
+            only_direct_children: true,
+        }
+    }
+
+    /// Implements the `SectionTree` API function.
+    fn section_tree(&self, section: &str) -> BTreeSet<String>
+    where
+        T: Clone,
+    {
+        // TODO: `keys` could be simplified if nightly feature map_first_last is
+        // stabilized, see <https://github.com/rust-lang/rust/issues/62924>
+        let mut keys = vec![];
+        let mut result = BTreeSet::new();
+        keys.extend(
+            self.clone()
+                .walk_tree(section)
+                // ignore current section's name
+                .map(|(k, _)| {
+                    if section.is_empty() {
+                        k.as_ref().to_string()
+                    } else {
+                        k.as_ref()[section.len() + 1..].to_string()
+                    }
+                }),
+        );
+
+        while let Some(key) = keys.pop() {
+            if let Some(pos) = key.rfind('.') {
+                let section = key.split_at(pos).0.to_string();
+                if !keys.contains(&section) && !result.contains(&section) {
+                    keys.push(section.clone());
+                }
+                result.insert(section.to_string());
+            }
+        }
+
+        result
+    }
+
+    fn section_leaves(&self, section: &str) -> BTreeSet<String>
+    where
+        T: Clone,
+    {
+        // TODO: `keys` could be simplified if nightly feature map_first_last is
+        // stabilized, see <https://github.com/rust-lang/rust/issues/62924>
+        let mut keys = vec![];
+        let mut result = BTreeSet::new();
+        keys.extend(
+            self.clone()
+                .walk_tree(section)
+                // ignore current section's name
+                .map(|(k, _)| {
+                    if section.is_empty() {
+                        k.as_ref().to_string()
+                    } else {
+                        k.as_ref()[section.len() + 1..].to_string()
+                    }
+                }),
+        );
+
+        while let Some(key) = keys.pop() {
+            if let Some(pos) = key.rfind('.') {
+                let section = key.split_at(pos).0.to_string();
+                if section.contains('.') {
+                    continue;
+                }
+                if !keys.contains(&section) && !result.contains(&section) {
+                    keys.push(section.clone());
+                }
+                result.insert(section.to_string());
+            }
+        }
+
+        result
+    }
 }
 
 /// An iterator that filters the elements of a key-value iterator for keys in
 /// a specific section.
 ///
 /// This `struct` is created by the [`walk_tree`]  and [`walk_leaves`]
-/// methods on [`CniIter`]. See its documentation for more.
+/// methods on [`Cni`]. See its documentation for more.
 ///
-/// [`walk_tree`]: CniIter::walk_tree
-/// [`walk_leaves`]: CniIter::walk_leaves
-/// [`CniIter`]: trait.CniIter.html
+/// [`walk_tree`]: Cni::walk_tree
+/// [`walk_leaves`]: Cni::walk_leaves
 pub struct SectionFilter<'section, I> {
     // this has to use interior mutability because of how `next` has to be done
     iter: RefCell<I>,
@@ -274,99 +361,5 @@ where
                 && (k[self.section.len()..].starts_with('.') || self.section.is_empty())
                 && !(self.only_direct_children && k[self.section.len() + 1..].contains('.'))
         })
-    }
-}
-
-impl<T, I, K, V> CniIter for T
-where
-    T: IntoIterator<IntoIter = I> + Clone,
-    I: Iterator<Item = (K, V)>,
-    K: AsRef<str>,
-{
-    type Iter = I;
-
-    /// Implements the `WalkTree` API function.
-    fn walk_tree(self, section: &str) -> SectionFilter<I> {
-        SectionFilter {
-            iter: RefCell::new(self.into_iter()),
-            section,
-            only_direct_children: false,
-        }
-    }
-
-    /// Implements the `WalkLeaves` API function.
-    fn walk_leaves(self, section: &str) -> SectionFilter<I> {
-        SectionFilter {
-            iter: RefCell::new(self.into_iter()),
-            section,
-            only_direct_children: true,
-        }
-    }
-
-    /// Implements the `SectionTree` API function.
-    fn section_tree(&self, section: &str) -> BTreeSet<String> {
-        // TODO: `keys` could be simplified if nightly feature map_first_last is
-        // stabilized, see <https://github.com/rust-lang/rust/issues/62924>
-        let mut keys = vec![];
-        let mut result = BTreeSet::new();
-        keys.extend(
-            self.clone()
-                .walk_tree(section)
-                // ignore current section's name
-                .map(|(k, _)| {
-                    if section.is_empty() {
-                        k.as_ref().to_string()
-                    } else {
-                        k.as_ref()[section.len() + 1..].to_string()
-                    }
-                }),
-        );
-
-        while let Some(key) = keys.pop() {
-            if let Some(pos) = key.rfind('.') {
-                let section = key.split_at(pos).0.to_string();
-                if !keys.contains(&section) && !result.contains(&section) {
-                    keys.push(section.clone());
-                }
-                result.insert(section.to_string());
-            }
-        }
-
-        result
-    }
-
-    fn section_leaves(&self, section: &str) -> BTreeSet<String> {
-        // TODO: `keys` could be simplified if nightly feature map_first_last is
-        // stabilized, see <https://github.com/rust-lang/rust/issues/62924>
-        let mut keys = vec![];
-        let mut result = BTreeSet::new();
-        keys.extend(
-            self.clone()
-                .walk_tree(section)
-                // ignore current section's name
-                .map(|(k, _)| {
-                    if section.is_empty() {
-                        k.as_ref().to_string()
-                    } else {
-                        k.as_ref()[section.len() + 1..].to_string()
-                    }
-                }),
-        );
-        dbg!(&keys);
-
-        while let Some(key) = keys.pop() {
-            if let Some(pos) = key.rfind('.') {
-                let section = key.split_at(pos).0.to_string();
-                if section.contains('.') {
-                    continue;
-                }
-                if !keys.contains(&section) && !result.contains(&section) {
-                    keys.push(section.clone());
-                }
-                result.insert(section.to_string());
-            }
-        }
-
-        result
     }
 }

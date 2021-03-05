@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use crate::api::Cni;
 
 fn test_map() -> HashMap<String, String> {
     let mut map = HashMap::new();
@@ -11,8 +12,6 @@ fn test_map() -> HashMap<String, String> {
 
 #[test]
 fn sub_tree() {
-    use crate::api::Cni;
-
     let mut map = HashMap::<String, String>::new();
     map.insert("b".into(), "b".into());
     map.insert("c".into(), "c".into());
@@ -25,8 +24,6 @@ fn sub_tree() {
 
 #[test]
 fn sub_leaves() {
-    use crate::api::Cni;
-
     let mut map = HashMap::<String, String>::new();
     map.insert("b".into(), "b".into());
     map.insert("c".into(), "c".into());
@@ -41,8 +38,6 @@ fn sub_leaves() {
 
 #[test]
 fn walk_tree() {
-    use crate::api::CniIter;
-
     let mut map = HashMap::<String, String>::new();
     map.insert("a.b".into(), "b".into());
     map.insert("a.c".into(), "c".into());
@@ -77,8 +72,6 @@ fn walk_tree() {
 
 #[test]
 fn walk_leaves() {
-    use crate::api::CniIter;
-
     let mut map = HashMap::<String, String>::new();
     map.insert("a.b".into(), "b".into());
     map.insert("a.c".into(), "c".into());
@@ -113,8 +106,6 @@ fn walk_leaves() {
 
 #[test]
 fn section_tree() {
-    use crate::api::CniIter;
-
     assert_eq!(
         test_map().section_tree("a").into_iter().collect::<Vec<_>>(),
         vec!["b"]
@@ -127,8 +118,6 @@ fn section_tree() {
 
 #[test]
 fn section_leaves() {
-    use crate::api::CniIter;
-
     assert_eq!(
         test_map()
             .section_leaves("")
