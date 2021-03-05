@@ -65,6 +65,9 @@ use std::str::CharIndices;
 mod tests;
 
 pub mod api;
+mod format;
+
+pub use format::to_str;
 
 /// implements Perl's / Raku's "\v", i.e. vertical white space
 fn is_vertical_ws(c: char) -> bool {

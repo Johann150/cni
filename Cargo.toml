@@ -1,6 +1,6 @@
 [package]
 name = "cni"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
 edition = "2018"
 description = "parser for the CNI configuration format"
@@ -12,6 +12,7 @@ categories = ["config", "encoding", "parser-implementations"]
 exclude = ["src/tests/**"]
 
 [dependencies]
+# none!
 
 [dev-dependencies]
 serde_json = "1.0"
