@@ -2,22 +2,19 @@ macro_rules! cni_test (
 	($name:ident, $path:expr) => {
 		#[test]
 		fn $name(){
+			let data = serde_json::from_str(include_str!(concat!($path, ".json"))).unwrap();
 			assert_eq!(
-				crate::from_str(include_str!(concat!($path, ".cni"))).unwrap(),
-				serde_json::from_str(include_str!(concat!($path, ".json"))).unwrap()
+				crate::from_str(&crate::to_str(&data)).unwrap(),
+				data
 			);
 		}
 	};
 	($name:ident, $path:expr, fail) => {
-		#[test]
-		fn $name(){
-			assert!(crate::from_str(include_str!(concat!($path, "_fail.cni"))).is_err());
-		}
+		// do nothing as there is no json file
+		// this is just here so the rest of the file can be copied vebatim
+		// from src/tests/mod.rs
 	};
 );
-
-mod api;
-mod format;
 
 mod core {
     cni_test!(bareword01, "cni/tests/core/bareword/01");
