@@ -218,9 +218,9 @@ impl<'a> CniParser<'a> {
 
 impl<'a> From<&'a str> for CniParser<'a> {
     /// Create a `CniParser` from a string slice.
-	fn from(text: &'a str) -> CniParser<'a> {
-		Self::new(text)
-	}
+    fn from(text: &'a str) -> CniParser<'a> {
+        Self::new(text)
+    }
 }
 
 impl Iterator for CniParser<'_> {

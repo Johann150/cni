@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::CniExt;
+use std::collections::HashMap;
 
 fn test_map() -> HashMap<String, String> {
     let mut map = HashMap::new();
