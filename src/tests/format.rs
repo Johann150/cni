@@ -1,3 +1,6 @@
+//! Tests for the formatter. Only the macro is changed so the test definitions
+//! can be reused from src/tests/mod.rs
+
 macro_rules! cni_test (
 	($name:ident, $path:expr) => {
 		#[test]
@@ -19,7 +22,6 @@ macro_rules! cni_test (
 mod core {
     cni_test!(bareword01, "cni/tests/core/bareword/01");
     cni_test!(bareword02, "cni/tests/core/bareword/02");
-    cni_test!(bareword03, "cni/tests/core/bareword/03");
     cni_test!(bareword04, "cni/tests/core/bareword/04", fail);
 
     cni_test!(comment01, "cni/tests/core/comment/01");
@@ -34,8 +36,6 @@ mod core {
     cni_test!(key04, "cni/tests/core/key/04", fail);
     cni_test!(key05, "cni/tests/core/key/05", fail);
     cni_test!(key06, "cni/tests/core/key/06", fail);
-    cni_test!(key07, "cni/tests/core/key/07", fail);
-    cni_test!(key08, "cni/tests/core/key/08", fail);
     cni_test!(key09, "cni/tests/core/key/09", fail);
 
     cni_test!(raw01, "cni/tests/core/raw/01");
@@ -53,10 +53,9 @@ mod core {
     cni_test!(section08, "cni/tests/core/section/08", fail);
     cni_test!(section09, "cni/tests/core/section/09", fail);
 
+    cni_test!(flexspace, "cni/tests/core/flexspace");
     cni_test!(sect_and_key, "cni/tests/core/sect_and_key");
-
-    cni_test!(unicode_ok, "cni/tests/core/unicode");
-    cni_test!(unicode_fail, "cni/tests/core/unicode", fail);
+    cni_test!(unicode, "cni/tests/core/unicode", fail);
 }
 
 mod ini {
@@ -64,8 +63,8 @@ mod ini {
 }
 
 mod ext {
-    cni_test!(flexspace, "cni/tests/ext/flexspace");
-    cni_test!(tabulation, "cni/tests/ext/tabulation");
+    #[cfg(feature = "more-keys")]
+    cni_test!(more_keys, "cni/tests/ext/more-keys");
 }
 
 mod bundle {

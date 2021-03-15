@@ -1,6 +1,6 @@
 [package]
 name = "cni_format"
-version = "0.4.3"
+version = "0.4.4"
 authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
 edition = "2018"
 description = "parser and serializer for the CNI configuration format"
