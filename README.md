@@ -1,6 +1,6 @@
 # cni_format
 
-This is a parser and serializer library for the [CNI configuration format](https://github.com/libuconf/cni/). It also provides the recommended API functions.
+This is a parser and serializer library for the [CNI configuration format](https://github.com/libuconf/cni/), compatible with version 0.1.0. It also provides the recommended API functions.
 
 This crate is dependency-free (except for testing).
 
