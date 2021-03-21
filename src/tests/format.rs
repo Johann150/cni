@@ -1,5 +1,7 @@
 //! Tests for the formatter. Only the macro is changed so the test definitions
 //! can be reused from src/tests/mod.rs
+//!
+//! At the bottom are some additional serialization-specific tests.
 
 macro_rules! cni_test (
 	($name:ident, $path:expr) => {
@@ -70,4 +72,81 @@ mod ext {
 mod bundle {
     cni_test!(exotic, "cni/tests/bundle/exotic");
     cni_test!(common, "cni/tests/bundle/common");
+}
+
+use std::collections::{BTreeMap, HashMap};
+
+#[test]
+fn section() {
+    let mut map = HashMap::new();
+    map.insert("a.b", "c");
+
+    assert_eq!(&crate::to_str(map), "[a]\nb = c\n");
+}
+
+#[test]
+fn multi_section() {
+    let mut map = HashMap::new();
+    map.insert("a.b.c".to_string(), "d".to_string());
+
+    assert_eq!(&crate::to_str(map), "[a]\nb.c = d\n");
+}
+
+#[test]
+fn section_nonalphabetical() {
+    let mut map = BTreeMap::new();
+    map.insert("a.b", "with section header");
+    map.insert("ccc", "without section header");
+
+    assert_eq!(
+        &crate::to_str(map),
+        "ccc = without section header\n[a]\nb = with section header\n"
+    );
+}
+
+#[test]
+fn multi_value() {
+    assert_eq!(
+        &crate::to_str(vec![("a", "b"), ("c", "d"),]),
+        "a = b\nc = d\n"
+    );
+}
+
+#[test]
+fn value_backtick() {
+    let mut map = BTreeMap::new();
+    map.insert("a", "backtick`d");
+
+    assert_eq!(&crate::to_str(map), "a = `backtick``d`\n");
+}
+
+#[test]
+fn value_vertical_whitespace() {
+    assert_eq!(
+        &crate::to_str(vec![("a", "multi\nline")]),
+        "a = `multi\nline`\n"
+    );
+
+    assert_eq!(
+        &crate::to_str(vec![("a", "multi\r\nline")]),
+        "a = `multi\r\nline`\n"
+    );
+
+    assert_eq!(
+        &crate::to_str(vec![("a", "multi\u{b}line")]),
+        "a = `multi\u{b}line`\n"
+    );
+}
+
+#[test]
+fn value_comment_symbol() {
+    assert_eq!(
+        &crate::to_str(vec![("a", "sharp#sign")]),
+        "a = `sharp#sign`\n"
+    );
+
+    assert_eq!(
+        &crate::to_str(vec![("a", "semi;colon")]),
+        "a = `semi;colon`\n"
+    );
 }
