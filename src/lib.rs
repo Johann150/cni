@@ -80,11 +80,15 @@ use std::str::CharIndices;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "api")]
 mod api;
+#[cfg(feature = "api")]
 pub use api::{CniExt, SectionFilter};
-mod format;
 
-pub use format::to_str;
+#[cfg(feature = "serializer")]
+mod serializer;
+#[cfg(feature = "serializer")]
+pub use serializer::to_str;
 
 /// implements Perl's / Raku's "\v", i.e. vertical white space
 fn is_vertical_ws(c: char) -> bool {
