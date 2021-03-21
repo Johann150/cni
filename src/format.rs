@@ -1,7 +1,9 @@
 use std::cmp::Ordering;
 
 fn format_value(value: String) -> String {
-    if value.contains(|c| c == '`' || crate::is_vertical_ws(c) || crate::is_comment(c)) {
+    if value.is_empty() {
+        "#empty".to_string()
+    } else if value.contains(|c| c == '`' || crate::is_vertical_ws(c) || crate::is_comment(c)) {
         // This has to be stored as a raw value.
         format!("`{}`", value.replace("`", "``"))
     } else {

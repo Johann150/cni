@@ -150,3 +150,8 @@ fn value_comment_symbol() {
         "a = `semi;colon`\n"
     );
 }
+
+#[test]
+fn empty_value() {
+    assert_eq!(&crate::to_str(std::iter::once(("a", ""))), "a = #empty\n");
+}
