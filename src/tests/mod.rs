@@ -20,7 +20,7 @@ macro_rules! cni_test (
 );
 
 mod api;
-mod format;
+mod serializer;
 
 mod core {
     cni_test!(bareword01, "cni/tests/core/bareword/01");
