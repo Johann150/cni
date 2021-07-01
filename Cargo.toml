@@ -22,7 +22,6 @@ default = ["ini", "api", "serializer"]
 # enables the INI compatibility `ini`
 ini = []
 # enables ext `more-keys`
-# this has been accepted but not yet merged (libuconf/cni/#2)
 more-keys = []
 # enables the recommended API
 api = []
