@@ -4,12 +4,12 @@ This is a parser and serializer library for the [CNI configuration format](https
 
 This crate is dependency-free (except for testing).
 
-The recommended API and serializer are enabled by default, but can be disabled with the feature flags `api` or `serializer` respectively. This may speed up compilation speeds.
+The recommended API and serializer can be en-/disabled with the feature flags `api` or `serializer` respectively. Only the API is enabled by default to speed up compilation.
 
 ## Reference Compliance
 
-`ini` and all `ext` elements have a feature flag by the same name. They are enabled by default where indicated.
+`ini` and all `ext` elements have a feature flag by the same name. Note that nothing outside of `core` is enabled by default, but can be enabled by the respective feature flags.
 
 - `core`: 29/29
-- `ini`: fully compliant (default)
-- `ext`: more-keys (not default)
+- `ini`: fully compliant
+- `ext`: more-keys
