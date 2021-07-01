@@ -74,8 +74,7 @@
 
 use std::collections::HashMap;
 use std::iter::Peekable;
-use std::ops::Range;
-use std::str::CharIndices;
+use std::str::Chars;
 
 #[cfg(test)]
 mod tests;
@@ -118,22 +117,20 @@ fn is_key(c: char) -> bool {
 ///
 /// If you just want to access the resulting key/value store, take a look at
 /// [`from_str`].
-pub struct CniParser<'source> {
-    source: &'source str,
+pub struct CniParser<I: Iterator> {
     /// The iterator stores the current position.
-    iter: Peekable<CharIndices<'source>>,
+    iter: Peekable<I>,
     /// The current section name.
-    section: Range<usize>,
+    section: String,
 }
 
-impl<'a> CniParser<'a> {
+impl<I: Iterator<Item = char>> CniParser<I> {
     /// Creates a new `CniParser` that will parse the given CNI format text.
     #[must_use = "iterators are lazy and do nothing unless consumed"]
-    pub fn new(source: &'a str) -> Self {
+    pub fn new(iter: I) -> Self {
         Self {
-            source,
-            iter: source.char_indices().peekable(),
-            section: 0..0,
+            iter: iter.peekable(),
+            section: String::new(),
         }
     }
 
@@ -141,7 +138,7 @@ impl<'a> CniParser<'a> {
     fn skip_ws(&mut self) {
         while matches!(
             self.iter.peek(),
-            Some(&(_, c)) if c.is_whitespace()
+            Some(c) if c.is_whitespace()
         ) {
             self.iter.next();
         }
@@ -154,28 +151,25 @@ impl<'a> CniParser<'a> {
         // otherwise do not because we might have also skipped over line ends
         if matches!(
             self.iter.peek(),
-            Some(&(_, c)) if is_comment(c)
+            Some(&c) if is_comment(c)
         ) {
             // continue until next vertical whitespace or EOF
-            while matches!(self.iter.next(), Some((_, c)) if !is_vertical_ws(c)) {}
+            while matches!(self.iter.next(), Some(c) if !is_vertical_ws(c)) {}
         }
     }
 
-    fn parse_key(&mut self) -> Result<Range<usize>, &'static str> {
-        let start = self.iter.peek().unwrap().0;
-        let mut end = start;
+    fn parse_key(&mut self) -> Result<String, &'static str> {
+        let mut key = String::new();
 
-        while matches!(self.iter.peek(), Some(&(_, c)) if is_key(c)) {
-            end += self.iter.next().unwrap().1.len_utf8();
+        while matches!(self.iter.peek(), Some(&c) if is_key(c)) {
+            key.push(self.iter.next().unwrap());
         }
-
-        let key = &self.source[start..end];
 
         if key.starts_with('.') || key.ends_with('.') {
             // key cannot start or end with a dot
             Err("invalid key")
         } else {
-            Ok(start..end)
+            Ok(key)
         }
     }
 
@@ -184,14 +178,14 @@ impl<'a> CniParser<'a> {
         // be constructed as Strings and cannot be a reference.
         let mut value = String::new();
 
-        if let Some(&(_, '`')) = self.iter.peek() {
+        if let Some('`') = self.iter.peek() {
             // raw value
             self.iter.next(); // consume backtick
             loop {
-                if let Some((_, '`')) = self.iter.peek() {
+                if let Some('`') = self.iter.peek() {
                     // check if this is an escaped backtick
                     self.iter.next();
-                    if let Some((_, '`')) = self.iter.peek() {
+                    if let Some('`') = self.iter.peek() {
                         // escaped backtick
                         self.iter.next();
                         value.push('`');
@@ -199,7 +193,7 @@ impl<'a> CniParser<'a> {
                         // end of the value
                         break;
                     }
-                } else if let Some((_, c)) = self.iter.next() {
+                } else if let Some(c) = self.iter.next() {
                     value.push(c);
                 } else {
                     // current value must have been a None
@@ -208,9 +202,9 @@ impl<'a> CniParser<'a> {
             }
         } else {
             // normal value: no comment starting character but white space, but not vertical space
-            while matches!(self.iter.peek(), Some(&(_, c)) if !is_comment(c) && !( c.is_whitespace() && is_vertical_ws(c) ))
+            while matches!(self.iter.peek(), Some(&c) if !is_comment(c) && !( c.is_whitespace() && is_vertical_ws(c) ))
             {
-                value.push(self.iter.next().unwrap().1);
+                value.push(self.iter.next().unwrap());
             }
             // leading or trailing whitespace cannot be part of the value
             value = value.trim().to_string();
@@ -220,14 +214,15 @@ impl<'a> CniParser<'a> {
     }
 }
 
-impl<'a> From<&'a str> for CniParser<'a> {
+impl<'a> From<&'a str> for CniParser<Chars<'a>> {
     /// Create a `CniParser` from a string slice.
-    fn from(text: &'a str) -> CniParser<'a> {
-        Self::new(text)
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    fn from(text: &'a str) -> Self {
+        Self::new(text.chars())
     }
 }
 
-impl Iterator for CniParser<'_> {
+impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
     type Item = Result<(String, String), &'static str>;
 
     /// Try to parse until the next key/value pair.
@@ -235,7 +230,7 @@ impl Iterator for CniParser<'_> {
         loop {
             self.skip_ws();
             // we should be at start of a line now
-            let (_, c) = *self.iter.peek()?;
+            let c = *self.iter.peek()?;
             if is_vertical_ws(c) {
                 // empty line
                 self.iter.next();
@@ -248,11 +243,11 @@ impl Iterator for CniParser<'_> {
                 self.skip_ws();
                 // this key can be empty
                 match self.parse_key() {
-                    Ok(key) => self.section = key,
+                    Ok(key) => self.section = key.to_string(),
                     Err(e) => return Some(Err(e)),
                 };
                 self.skip_ws();
-                if self.iter.next().map_or(true, |(_, c)| c != ']') {
+                if self.iter.next().map_or(true, |c| c != ']') {
                     return Some(Err("expected \"]\""));
                 }
                 self.skip_comment();
@@ -264,17 +259,13 @@ impl Iterator for CniParser<'_> {
                     // this key cannot be empty
                     Ok(key) if key.is_empty() => return Some(Err("expected key")),
                     // do not prepend an empty section
-                    Ok(key) if self.section.is_empty() => self.source[key].to_string(),
-                    Ok(key) => format!(
-                        "{}.{}",
-                        &self.source[self.section.clone()],
-                        &self.source[key]
-                    ),
+                    Ok(key) if self.section.is_empty() => key,
+                    Ok(key) => format!("{}.{}", self.section, key),
                     Err(e) => return Some(Err(e)),
                 };
 
                 self.skip_ws();
-                if self.iter.next().map_or(true, |(_, c)| c != '=') {
+                if self.iter.next().map_or(true, |c| c != '=') {
                     return Some(Err("expected \"=\""));
                 }
                 self.skip_ws();
@@ -302,5 +293,5 @@ impl Iterator for CniParser<'_> {
 /// Returns an `Err` if the given text is not in a valid CNI format. The `Err`
 /// will contain a message explaining the error.
 pub fn from_str(text: &str) -> Result<HashMap<String, String>, &'static str> {
-    CniParser::new(text).collect()
+    CniParser::from(text).collect()
 }
