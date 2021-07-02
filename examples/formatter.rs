@@ -9,7 +9,7 @@ fn main() {
     // ignore executable path
     args.next();
 
-    let file = args.next().unwrap_or("-".to_string());
+    let file = args.next().unwrap_or_else(|| "-".to_string());
 
     let stream: Box<dyn Read> = if file == "-" {
         Box::new(std::io::stdin())

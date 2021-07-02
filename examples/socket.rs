@@ -34,7 +34,7 @@ fn main() {
         utf::decode_utf8(stream.bytes().filter_map(Result::ok)).filter_map(Result::ok),
     );
 
-    for (key, value) in parser.filter_map(Result::ok) {
+    for (_key, value) in parser.filter_map(Result::ok) {
         println!("client at {}", value);
     }
 }

@@ -28,16 +28,17 @@ impl<I: Iterator<Item = char>> Iterator for Iter<I> {
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(c) = self.iter.next() {
+        self.iter.next().filter(|&c| {
             if crate::is_vertical_ws(c) {
                 self.line += 1;
                 self.col = 1;
             } else {
                 self.col += 1;
             }
-            Some(c)
-        } else {
-            None
-        }
+
+            // never filter out, this is just a convenient way to do something
+            // if there is a character
+            true
+        })
     }
 }
