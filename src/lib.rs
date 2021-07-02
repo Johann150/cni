@@ -45,6 +45,7 @@
 //! }
 //!
 //! // You can get values from one section only.
+//! # #[cfg(feature = "api")]
 //! {
 //!     let mut section: HashMap<String, String> = HashMap::new();
 //!     section.insert("key".to_string(), "value".to_string());
@@ -59,6 +60,7 @@
 //! }
 //!
 //! // You can get child nodes from one section only, excluding subsections.
+//! # #[cfg(feature = "api")]
 //! {
 //!     let mut section: HashMap<String, String> = HashMap::new();
 //!     section.insert("key".to_string(), "value".to_string());
@@ -79,14 +81,14 @@ use std::str::Chars;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "api")]
+#[cfg(any(feature = "api", test, doctest, doc))]
 mod api;
-#[cfg(feature = "api")]
+#[cfg(any(feature = "api", test, doctest, doc))]
 pub use api::{CniExt, SectionFilter};
 
-#[cfg(feature = "serializer")]
+#[cfg(any(feature = "serializer", test, doctest, doc))]
 mod serializer;
-#[cfg(feature = "serializer")]
+#[cfg(any(feature = "serializer", test, doctest, doc))]
 pub use serializer::to_str;
 
 /// implements Perl's / Raku's "\v", i.e. vertical white space
@@ -98,11 +100,11 @@ fn is_vertical_ws(c: char) -> bool {
 }
 
 fn is_comment(c: char) -> bool {
-    c == '#' || (cfg!(feature = "ini") && c == ';')
+    c == '#' || ((cfg!(feature = "ini") || cfg!(test)) && c == ';')
 }
 
 fn is_key(c: char) -> bool {
-    if cfg!(feature = "more-keys") {
+    if cfg!(feature = "more-keys") || cfg!(test) {
         !matches!(c, '[' | ']' | '=' | '`') && !is_comment(c) && !c.is_whitespace()
     } else {
         matches!(c, '0'..='9' | 'a'..='z' | 'A'..='Z' | '-' | '_' | '.')

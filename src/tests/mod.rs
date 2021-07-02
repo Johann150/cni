@@ -64,7 +64,6 @@ mod ini {
 }
 
 mod ext {
-    #[cfg(feature = "more-keys")]
     cni_test!(more_keys, "cni/tests/ext/more-keys");
 }
 

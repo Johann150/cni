@@ -18,7 +18,7 @@ fn format_value(value: String) -> String {
 /// consists of multiple parts separated by a dot, the first one will always be
 /// used for the section name
 ///
-/// ```
+/// ```ignore <https://github.com/rust-lang/rust/issues/67295>
 /// let mut map = std::collections::HashMap::new();
 /// map.insert("a", "b");
 ///
