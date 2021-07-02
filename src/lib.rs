@@ -75,7 +75,6 @@
 //! ```
 
 use std::collections::HashMap;
-use std::iter::Peekable;
 use std::str::Chars;
 
 #[cfg(test)]
@@ -90,6 +89,8 @@ pub use api::{CniExt, SectionFilter};
 mod serializer;
 #[cfg(any(feature = "serializer", test, doctest, doc))]
 pub use serializer::to_str;
+
+mod iter;
 
 /// implements Perl's / Raku's "\v", i.e. vertical white space
 fn is_vertical_ws(c: char) -> bool {
@@ -119,9 +120,9 @@ fn is_key(c: char) -> bool {
 ///
 /// If you just want to access the resulting key/value store, take a look at
 /// [`from_str`].
-pub struct CniParser<I: Iterator> {
+pub struct CniParser<I: Iterator<Item = char>> {
     /// The iterator stores the current position.
-    iter: Peekable<I>,
+    iter: iter::Iter<I>,
     /// The current section name.
     section: String,
 }
@@ -131,7 +132,7 @@ impl<I: Iterator<Item = char>> CniParser<I> {
     #[must_use = "iterators are lazy and do nothing unless consumed"]
     pub fn new(iter: I) -> Self {
         Self {
-            iter: iter.peekable(),
+            iter: iter::Iter::new(iter),
             section: String::new(),
         }
     }
@@ -169,19 +170,21 @@ impl<I: Iterator<Item = char>> CniParser<I> {
 
         if key.starts_with('.') || key.ends_with('.') {
             // key cannot start or end with a dot
-            Err("invalid key")
+            Err("invalid key, can not start or end with a dot")
         } else {
             Ok(key)
         }
     }
 
-    fn parse_value(&mut self) -> Result<String, &'static str> {
+    fn parse_value(&mut self) -> Result<String, String> {
         // since raw values might have escaped backtics, they have to
         // be constructed as Strings and cannot be a reference.
         let mut value = String::new();
 
         if let Some('`') = self.iter.peek() {
-            // raw value
+            // raw value, save starting line and column for potential diagnostics
+            let (line, col) = (self.iter.line, self.iter.col);
+
             self.iter.next(); // consume backtick
             loop {
                 if let Some('`') = self.iter.peek() {
@@ -199,7 +202,7 @@ impl<I: Iterator<Item = char>> CniParser<I> {
                     value.push(c);
                 } else {
                     // current value must have been a None
-                    return Err("unterminated raw value");
+                    return Err(format!("line {}:{}: unterminated raw value", line, col));
                 }
             }
         } else {
@@ -225,7 +228,7 @@ impl<'a> From<&'a str> for CniParser<Chars<'a>> {
 }
 
 impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
-    type Item = Result<(String, String), &'static str>;
+    type Item = Result<(String, String), String>;
 
     /// Try to parse until the next key/value pair.
     fn next(&mut self) -> Option<Self::Item> {
@@ -242,15 +245,26 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
             } else if c == '[' {
                 // section heading
                 self.iter.next(); // consume [
+
+                let (line, col) = (self.iter.line, self.iter.col);
                 self.skip_ws();
+
+                // better error message before we store the new line and column.
+                if self.iter.peek().is_none() {
+                    return Some(Err(format!("line {}:{}: expected \"]\"", line, col)));
+                }
+
                 // this key can be empty
                 match self.parse_key() {
                     Ok(key) => self.section = key.to_string(),
-                    Err(e) => return Some(Err(e)),
+                    Err(e) => return Some(Err(format!("line {}:{}: {}", line, col, e))),
                 };
+
+                let (line, col) = (self.iter.line, self.iter.col);
                 self.skip_ws();
+
                 if self.iter.next().map_or(true, |c| c != ']') {
-                    return Some(Err("expected \"]\""));
+                    return Some(Err(format!("line {}:{}: expected \"]\"", line, col)));
                 }
                 self.skip_comment();
             } else {
@@ -259,17 +273,30 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
                 // parse key, prepend it with section name if present
                 let key = match self.parse_key() {
                     // this key cannot be empty
-                    Ok(key) if key.is_empty() => return Some(Err("expected key")),
+                    Ok(key) if key.is_empty() => {
+                        return Some(Err(format!(
+                            "line {}:{}: expected key",
+                            self.iter.line, self.iter.col
+                        )))
+                    }
                     // do not prepend an empty section
                     Ok(key) if self.section.is_empty() => key,
                     Ok(key) => format!("{}.{}", self.section, key),
-                    Err(e) => return Some(Err(e)),
+                    Err(e) => {
+                        return Some(Err(format!(
+                            "line {}:{}: {}",
+                            self.iter.line, self.iter.col, e
+                        )))
+                    }
                 };
 
+                let (line, col) = (self.iter.line, self.iter.col);
                 self.skip_ws();
+
                 if self.iter.next().map_or(true, |c| c != '=') {
-                    return Some(Err("expected \"=\""));
+                    return Some(Err(format!("line {}:{}: expected \"=\"", line, col)));
                 }
+
                 self.skip_ws();
 
                 let value = match self.parse_value() {
@@ -294,6 +321,6 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
 /// # Errors
 /// Returns an `Err` if the given text is not in a valid CNI format. The `Err`
 /// will contain a message explaining the error.
-pub fn from_str(text: &str) -> Result<HashMap<String, String>, &'static str> {
+pub fn from_str(text: &str) -> Result<HashMap<String, String>, String> {
     CniParser::from(text).collect()
 }
