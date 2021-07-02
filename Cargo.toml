@@ -16,6 +16,7 @@ exclude = ["src/tests/**"]
 
 [dev-dependencies]
 serde_json = "1.0"
+utf = "0.1"
 
 [features]
 default = ["api"]
