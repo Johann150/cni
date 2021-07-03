@@ -1,0 +1,8 @@
+[package]
+name = "cni_format_linter"
+version = "0.5.0"
+authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
+edition = "2018"
+description = "linter for the CNI configuration format"
+license = "Unlicense"
+publish = false

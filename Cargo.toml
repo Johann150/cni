@@ -28,3 +28,6 @@ more-keys = []
 api = []
 # enables the serializer
 serializer = []
+
+[workspace]
+members = ["linter"]
