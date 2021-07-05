@@ -54,7 +54,6 @@ fn walk_tree() {
     assert_eq!(
         test_map()
             .walk_tree("a")
-            .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect::<HashMap<String, String>>(),
         map
     );
@@ -64,7 +63,6 @@ fn walk_tree() {
     assert_eq!(
         test_map()
             .walk_tree("")
-            .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect::<HashMap<String, String>>(),
         map
     );
@@ -87,7 +85,6 @@ fn walk_leaves() {
     assert_eq!(
         test_map()
             .walk_leaves("a")
-            .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect::<HashMap<String, String>>(),
         map
     );
@@ -98,7 +95,6 @@ fn walk_leaves() {
     assert_eq!(
         test_map()
             .walk_leaves("")
-            .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect::<HashMap<String, String>>(),
         map
     );

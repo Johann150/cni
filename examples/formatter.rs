@@ -1,5 +1,3 @@
-use std::io::Read;
-
 /// Reads in a file given as argument (or stdin if "-" or none is given).
 /// Produces an equivalent CNI representation of what was just read,
 /// but formatted much more strictly. Most comments are removed.
