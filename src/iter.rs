@@ -29,7 +29,10 @@ impl<I: Iterator<Item = char>> Iterator for Iter<I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next().filter(|&c| {
-            if crate::is_vertical_ws(c) {
+            if c == '\r' && self.iter.peek() == Some(&'\n') {
+                // deal with CRLF line endings
+                self.col += 1;
+            } else if crate::is_vertical_ws(c) {
                 self.line += 1;
                 self.col = 1;
             } else {
