@@ -18,6 +18,10 @@ fn is_key(c: &char, opts: &Opts) -> bool {
     }
 }
 
+fn is_value(c: &char, opts: &Opts) -> bool {
+    !(*c == '#' || (opts.ini && *c == ';') || is_vertical_ws(c))
+}
+
 #[derive(Default)]
 struct Opts {
     ini: bool,
@@ -321,7 +325,75 @@ fn process(opts: &Opts, path: &str) {
 
                 skip_ws(&mut iter);
 
-                // TODO check value
+                if iter.peek() == Some(&'`') {
+                    // raw value
+                    iter.next(); // skip over backtick
+
+                    let start = (iter.line, iter.col);
+                    // trying to detect where a missing backtick could be
+                    let mut last_key = None;
+                    let mut detected_stmt = None;
+
+                    while let Some(c) = iter.peek() {
+                        if c == &'=' {
+                            // do not overwrite previous detected statements
+                            if detected_stmt.is_none() && last_key.is_some() {
+                                detected_stmt = last_key;
+                            }
+                            last_key = None;
+                        } else if c == &'`' {
+                            iter.next();
+                            last_key = None;
+                            if iter.peek() != Some(&'`') {
+                                // not an escaped backtick
+                                if !matches!(iter.peek(), Some(c) if is_value(c, opts)) {
+                                    println!(
+                                        "{0}:{1}-{0}:{2} syntax error: Unescaped backtick inside raw value. Use '``' to represent a backtick in a raw value.",
+                                        iter.line, iter.col, iter.col+1
+                                    );
+                                } else {
+                                    // this backtick terminates the raw value
+                                    break;
+                                }
+                            }
+                        } else if is_key(c, opts) {
+                            // keep the start position of this key
+                            if last_key.is_none() {
+                                last_key = Some((iter.line, iter.col));
+                            }
+                        } else if c.is_whitespace() {
+                            // this could be the whitespace between the key and
+                            // the equal sign
+                            skip_ws(&mut iter);
+                            if iter.peek() != Some(&'=') {
+                                // it was not
+                                last_key = None;
+                            }
+                        } else if !is_key(c, opts) {
+                            // this cant be the last key
+                            last_key = None;
+                        }
+                        iter.next();
+                    }
+
+                    if iter.peek().is_none() {
+                        println!(
+                            "{}:{}-{}:{} syntax error: Expected '`' at end of raw value.",
+                            start.0, start.1, iter.line, iter.col
+                        );
+                        if let Some((line, col)) = detected_stmt {
+                            println!(
+                                "{0}:{1}-{0}:{2} info: This looks like a new statement, did you forget to put a backtick here?",
+                                line, col, col+1
+                            );
+                        }
+                    }
+                } else {
+                    // non-raw value
+                    while matches!(iter.peek(), Some(c) if is_value(c, &opts)) {
+                        iter.next();
+                    }
+                }
             }
             Some('=') => {
                 println!(
