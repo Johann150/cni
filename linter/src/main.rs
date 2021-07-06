@@ -73,6 +73,12 @@ fn skip_comment(iter: &mut iter::Iter) {
     iter.next();
 }
 
+fn skip_ws(iter: &mut iter::Iter) {
+    while matches!(iter.peek(), Some(c) if c.is_whitespace()) {
+        iter.next();
+    }
+}
+
 fn check_key(iter: &mut iter::Iter, opts: &Opts) {
     if iter.peek() == Some(&'.') {
         println!(
@@ -165,8 +171,8 @@ fn process(opts: &Opts, path: &str) {
                 let mut whitespace_after = None; // also the start of the comment after
                 let mut comment_after = None;
 
-                // here, also assume linebreaks as unnecessary whitespace
-                while matches!(iter.peek(), Some(c) if c.is_whitespace()) {
+                skip_ws(&mut iter);
+                if start != (iter.line, iter.col) {
                     whitespace_before = Some((iter.line, iter.col));
                 }
 
@@ -182,9 +188,7 @@ fn process(opts: &Opts, path: &str) {
                     comment_before = Some((iter.line, iter.col));
 
                     // skip over any whitespace (linebreak and at the start of the next line)
-                    while matches!(iter.peek(), Some(c) if c.is_whitespace()) {
-                        iter.next();
-                    }
+                    skip_ws(&mut iter);
                 }
                 // do not report on the comment yet, maybe the heading is broken
 
@@ -196,8 +200,13 @@ fn process(opts: &Opts, path: &str) {
                 }
 
                 // trailing whitespace
-                // here, also assume linebreaks as unnecessary whitespace
-                while matches!(iter.peek(), Some(c) if c.is_whitespace()) {
+                skip_ws(&mut iter);
+                if word
+                    .or(comment_before)
+                    .or(whitespace_before)
+                    .unwrap_or(start)
+                    != (iter.line, iter.col)
+                {
                     whitespace_after = Some((iter.line, iter.col));
                 }
 
@@ -213,9 +222,7 @@ fn process(opts: &Opts, path: &str) {
                     comment_after = Some((iter.line, iter.col));
 
                     // skip over any whitespace (linebreak and at the start of the next line)
-                    while matches!(iter.peek(), Some(c) if c.is_whitespace()) {
-                        iter.next();
-                    }
+                    skip_ws(&mut iter);
                 }
                 // do not report on the comment yet, maybe the heading is broken
 
@@ -301,10 +308,7 @@ fn process(opts: &Opts, path: &str) {
             Some(c) if is_key(&c, opts) => {
                 check_key(&mut iter, opts);
 
-                // skip whitespace
-                while matches!(iter.peek(), Some(c) if c.is_whitespace()) {
-                    iter.next();
-                }
+                skip_ws(&mut iter);
 
                 if iter.peek() != Some(&'=') {
                     println!(
@@ -315,10 +319,7 @@ fn process(opts: &Opts, path: &str) {
                     );
                 }
 
-                // skip whitespace
-                while matches!(iter.peek(), Some(c) if c.is_whitespace()) {
-                    iter.next();
-                }
+                skip_ws(&mut iter);
 
                 // TODO check value
             }
