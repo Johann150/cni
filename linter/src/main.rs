@@ -65,6 +65,37 @@ fn main() {
     }
 }
 
+fn skip_comment(iter: &mut iter::Iter) {
+    while matches!(iter.peek(), Some(c) if !is_vertical_ws(c)) {
+        iter.next();
+    }
+    // also skip over the linebreak
+    iter.next();
+}
+
+fn check_key(iter: &mut iter::Iter, opts: &Opts) {
+    if iter.peek() == Some(&'.') {
+        println!(
+	        "{0}:{1}-{0}:{2} syntax error: A key or section heading can not start or end with a dot.",
+            iter.line,
+            iter.col,
+            iter.col+1
+        );
+    }
+    while let Some(c) = iter.peek().copied() {
+        iter.next();
+
+        if matches!(iter.peek(), Some(x) if !is_key(x, opts)) && c == '.' {
+            println!(
+                "{0}:{1}-{0}:{2} syntax error: A key or section heading can not start or end with a dot.",
+                iter.line,
+                iter.col,
+                iter.col+1,
+            );
+        }
+    }
+}
+
 fn process(opts: &Opts, path: &str) {
     let src = if path == "-" {
         let mut buffer = String::new();
@@ -117,22 +148,8 @@ fn process(opts: &Opts, path: &str) {
                     iter.next();
                 }
             }
-            Some('#') => {
-                // skip the comment
-                while matches!(iter.peek(), Some(c) if !is_vertical_ws(c)) {
-                    iter.next();
-                }
-                // also skip over the linebreak
-                iter.next();
-            }
-            Some(';') if opts.ini => {
-                // skip the comment
-                while matches!(iter.peek(), Some(c) if !is_vertical_ws(c)) {
-                    iter.next();
-                }
-                // also skip over the linebreak
-                iter.next();
-            }
+            Some('#') => skip_comment(&mut iter),
+            Some(';') if opts.ini => skip_comment(&mut iter),
             Some(']') => println!(
                 "{0}:{1}-{0}:{2} syntax error: unexpected opening square bracket",
                 iter.line,
@@ -172,26 +189,10 @@ fn process(opts: &Opts, path: &str) {
                 // do not report on the comment yet, maybe the heading is broken
 
                 // this must be the start of the actual section header
-                if iter.peek() == Some(&'.') {
-                    println!(
-                    	"{0}:{1}-{0}:{2} syntax error: A section heading can not start or end with a dot.",
-                    	iter.line,
-                    	iter.col,
-                    	iter.col+1
-                    );
-                }
-                while let Some(c) = iter.peek().copied() {
-                    iter.next();
-                    word = Some((iter.line, iter.col));
+                check_key(&mut iter, opts);
 
-                    if matches!(iter.peek(), Some(x) if !is_key(x, opts)) && c == '.' {
-                        println!(
-                        	"{0}:{1}-{0}:{2} syntax error: A section heading can not start or end with a dot.",
-                        	iter.line,
-                        	iter.col,
-                        	iter.col+1,
-                        );
-                    }
+                if comment_before.or(whitespace_before).unwrap_or(start) != (iter.line, iter.col) {
+                    word = Some((iter.line, iter.col));
                 }
 
                 // trailing whitespace
@@ -298,27 +299,7 @@ fn process(opts: &Opts, path: &str) {
                 }
             }
             Some(c) if is_key(&c, opts) => {
-                // this must be the start of the actual section header
-                if iter.peek() == Some(&'.') {
-                    println!(
-                    	"{0}:{1}-{0}:{2} syntax error: A section heading can not start or end with a dot.",
-                    	iter.line,
-                    	iter.col,
-                    	iter.col+1
-                    );
-                }
-                while let Some(c) = iter.peek().copied() {
-                    iter.next();
-
-                    if matches!(iter.peek(), Some(x) if !is_key(x, opts)) && c == '.' {
-                        println!(
-                        	"{0}:{1}-{0}:{2} syntax error: A section heading can not start or end with a dot.",
-                        	iter.line,
-                        	iter.col,
-                        	iter.col+1,
-                        );
-                    }
-                }
+                check_key(&mut iter, opts);
 
                 // skip whitespace
                 while matches!(iter.peek(), Some(c) if c.is_whitespace()) {
@@ -332,6 +313,11 @@ fn process(opts: &Opts, path: &str) {
                         iter.col,
                         iter.col + 1,
                     );
+                }
+
+                // skip whitespace
+                while matches!(iter.peek(), Some(c) if c.is_whitespace()) {
+                    iter.next();
                 }
 
                 // TODO check value
