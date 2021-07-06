@@ -29,7 +29,7 @@ struct Opts {
 }
 
 fn usage() {
-    println!(
+    print!(
         "\
 Usage:
 {0} (--help|-h|-?)
@@ -84,25 +84,52 @@ fn skip_ws(iter: &mut iter::Iter) {
 }
 
 fn check_key(iter: &mut iter::Iter, opts: &Opts) {
+    let mut pseudo_raw = None;
+
     if iter.peek() == Some(&'.') {
         println!(
-	        "{0}:{1}-{0}:{2} syntax error: A key or section heading can not start or end with a dot.",
+            "{0}:{1}-{0}:{2} syntax error: A key or section heading can not start with a dot.",
             iter.line,
             iter.col,
-            iter.col+1
+            iter.col + 1
         );
-    }
-    while let Some(c) = iter.peek().copied() {
+    } else if iter.peek() == Some(&'`') {
+        pseudo_raw = Some((iter.line, iter.col));
         iter.next();
+    }
 
+    while let Some(c) = iter.peek().copied() {
+        if !is_key(&c, opts) {
+            break;
+        }
+
+        iter.next();
         if matches!(iter.peek(), Some(x) if !is_key(x, opts)) && c == '.' {
             println!(
-                "{0}:{1}-{0}:{2} syntax error: A key or section heading can not start or end with a dot.",
+                "{0}:{1}-{0}:{2} syntax error: A key or section heading can not end with a dot.",
                 iter.line,
                 iter.col,
-                iter.col+1,
+                iter.col + 1,
             );
         }
+    }
+
+    if let Some((line, col)) = pseudo_raw {
+        if iter.peek() == Some(&'`') {
+            iter.next();
+        }
+        println!(
+            "{}:{}-{}:{} syntax error: A key or section heading can not be a raw value.",
+            line, col, iter.line, iter.col
+        );
+    } else if iter.peek() == Some(&'`') {
+        iter.next();
+        println!(
+            "{0}:{1}-{0}:{2} syntax error: A key or section heading can not be a raw value.",
+            iter.line,
+            iter.col,
+            iter.col + 1
+        );
     }
 }
 
@@ -132,7 +159,7 @@ fn process(opts: &Opts, path: &str) {
     let mut iter = iter::Iter::new(&src);
 
     loop {
-        match iter.next() {
+        match iter.peek() {
             None => break,
             Some(c) if c.is_whitespace() => {
                 // don't report empty lines as unnecessary whitespace
@@ -160,13 +187,17 @@ fn process(opts: &Opts, path: &str) {
             }
             Some('#') => skip_comment(&mut iter),
             Some(';') if opts.ini => skip_comment(&mut iter),
-            Some(']') => println!(
-                "{0}:{1}-{0}:{2} syntax error: unexpected opening square bracket",
-                iter.line,
-                iter.col,
-                iter.col + 1
-            ),
+            Some(']') => {
+                iter.next();
+                println!(
+                    "{0}:{1}-{0}:{2} syntax error: Unexpected closing square bracket.",
+                    iter.line,
+                    iter.col,
+                    iter.col + 1
+                )
+            }
             Some('[') => {
+                iter.next();
                 let start = (iter.line, iter.col);
                 // ending locations of various possible items
                 let mut whitespace_before = None; // also the start of the comment before
@@ -233,6 +264,7 @@ fn process(opts: &Opts, path: &str) {
                 if iter.peek() == Some(&']') {
                     // heading terminated properly
                     // now output warnings
+                    iter.next();
 
                     if word.is_none() {
                         // comment_after and whitespace_after must also be None
@@ -309,27 +341,34 @@ fn process(opts: &Opts, path: &str) {
                     );
                 }
             }
-            Some(c) if is_key(&c, opts) => {
+            // backtick is not actually a key, but looks like someone tried to
+            // put a raw value for a key so this path will produce the appropriate error messages
+            Some(c) if is_key(&c, opts) || c == &'`' => {
                 check_key(&mut iter, opts);
 
-                skip_ws(&mut iter);
+                {
+                    let end_key = (iter.line, iter.col);
+                    skip_ws(&mut iter);
 
-                if iter.peek() != Some(&'=') {
-                    println!(
-                        "{0}:{1}-{0}:{2} syntax error: Expected '=' after key.",
-                        iter.line,
-                        iter.col,
-                        iter.col + 1,
-                    );
+                    if iter.peek() != Some(&'=') {
+                        println!(
+                            "{0}:{1}-{0}:{2} syntax error: Expected '=' after key.",
+                            end_key.0,
+                            end_key.1,
+                            end_key.1 + 1,
+                        );
+                    }
+                    iter.next(); // skip over equal sign
                 }
 
                 skip_ws(&mut iter);
 
                 if iter.peek() == Some(&'`') {
                     // raw value
+                    let start = (iter.line, iter.col);
+
                     iter.next(); // skip over backtick
 
-                    let start = (iter.line, iter.col);
                     // trying to detect where a missing backtick could be
                     let mut last_key = None;
                     let mut detected_stmt = None;
@@ -346,7 +385,8 @@ fn process(opts: &Opts, path: &str) {
                             last_key = None;
                             if iter.peek() != Some(&'`') {
                                 // not an escaped backtick
-                                if !matches!(iter.peek(), Some(c) if is_value(c, opts)) {
+                                if matches!(iter.peek(), Some(c) if is_value(c, opts) && !c.is_whitespace())
+                                {
                                     println!(
                                         "{0}:{1}-{0}:{2} syntax error: Unescaped backtick inside raw value. Use '``' to represent a backtick in a raw value.",
                                         iter.line, iter.col, iter.col+1
@@ -369,6 +409,8 @@ fn process(opts: &Opts, path: &str) {
                                 // it was not
                                 last_key = None;
                             }
+                            // do not advance iterator at end of loop
+                            continue;
                         } else if !is_key(c, opts) {
                             // this cant be the last key
                             last_key = None;
@@ -411,6 +453,9 @@ fn process(opts: &Opts, path: &str) {
                     iter.col,
                     iter.col + 1,
                 );
+                // so we do not generate an error for every char on this line,
+                // just pretend it is a comment
+                skip_comment(&mut iter);
             }
         }
     }
