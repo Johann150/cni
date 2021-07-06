@@ -19,3 +19,5 @@ The recommended API and serializer can be en-/disabled with the feature flags `a
 There are some helpful tools included with the library as examples of how the library can be used. These can be run with e.g. `cargo run --example dumper -- src/test/cni/tests/core/key/01.cni`.
 
 Note that some of the examples require you to enable features when compiling. For example like this `cargo run --example formatter --feature serializer -- src/test/cni/tests/core/key/01.cni`.
+
+The linter is implemented completely separately from the library and can be found as a subcrate in the `linter` directory. By switching to that directory, you can use cargo on it normally.
