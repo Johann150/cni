@@ -28,47 +28,6 @@ struct Opts {
     more_keys: bool,
 }
 
-fn usage() {
-    print!(
-        "\
-Usage:
-{0} (--help|-h|-?)
-{0} [--[no-]ini] [--[no-]more-keys] FILE...
-
-The first invocation will show this usage information and exit.
-
-The second invocation will perform linting on the given files.
-If '-' is passed, stdin will be read instead. The shown flags can be used to
-enable (or disable) the respective features. This can be done on a file by
-file basis, the respectively last flag before a file will be in effect.
-",
-        std::env::args().next().unwrap(),
-    );
-}
-
-fn main() {
-    if std::env::args().any(|arg| arg == "-h" || arg == "--help" || arg == "-?") {
-        usage();
-        std::process::exit(0);
-    }
-
-    let mut opts = Opts::default();
-
-    let mut args = std::env::args();
-    // ignore binary path
-    args.next();
-
-    for arg in args {
-        match arg.as_str() {
-            "--ini" => opts.ini = true,
-            "--no-ini" => opts.ini = false,
-            "--more-keys" => opts.more_keys = true,
-            "--no-more-keys" => opts.more_keys = false,
-            file => process(&opts, file),
-        }
-    }
-}
-
 fn skip_comment(iter: &mut iter::Iter) {
     while matches!(iter.peek(), Some(c) if !is_vertical_ws(c)) {
         iter.next();
@@ -133,7 +92,7 @@ fn check_key(iter: &mut iter::Iter, opts: &Opts) {
     }
 }
 
-fn process(opts: &Opts, path: &str) {
+fn lint(opts: &Opts, path: &str) {
     let src = if path == "-" {
         let mut buffer = String::new();
         match std::io::stdin().read_to_string(&mut buffer) {
