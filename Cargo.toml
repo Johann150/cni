@@ -1,33 +1,16 @@
 [package]
-name = "cni_format"
+name = "cni_format_utils"
 version = "0.5.1"
 authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
 edition = "2018"
-description = "parser and serializer for the CNI configuration format"
+description = "various utilities for the CNI configuration format"
 readme = "README.md"
 repository = "https://github.com/Johann150/cni"
 license = "Unlicense"
-keywords = ["configuration", "ini", "cni", "serialize"]
-categories = ["config", "encoding", "parser-implementations"]
-exclude = ["src/tests/**"]
+publish = false
 
 [dependencies]
-# none!
-
-[dev-dependencies]
-serde_json = "1.0"
 utf = "0.1"
-
-[features]
-default = ["api"]
-# enables the INI compatibility `ini`
-ini = []
-# enables ext `more-keys`
-more-keys = []
-# enables the recommended API
-api = []
-# enables the serializer
-serializer = []
+cni_format = { version = "0.5", path = "lib" }
 
 [workspace]
-members = ["linter"]

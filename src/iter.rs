@@ -1,19 +1,20 @@
 use std::iter::Peekable;
+use std::str::Chars;
 
 /// Wrapper around an iterator that keeps track of the current line and column
 /// position to produce proper diagnostics.
-pub(crate) struct Iter<I: Iterator> {
+pub(crate) struct Iter<'src> {
     /// The internal iterator.
-    iter: Peekable<I>,
+    iter: Peekable<Chars<'src>>,
 
     pub line: usize,
     pub col: usize,
 }
 
-impl<I: Iterator<Item = char>> Iter<I> {
-    pub fn new(iter: I) -> Self {
+impl<'src> Iter<'src> {
+    pub fn new(src: &'src str) -> Self {
         Self {
-            iter: iter.peekable(),
+            iter: src.chars().peekable(),
             line: 1,
             col: 1,
         }
@@ -24,15 +25,12 @@ impl<I: Iterator<Item = char>> Iter<I> {
     }
 }
 
-impl<I: Iterator<Item = char>> Iterator for Iter<I> {
-    type Item = I::Item;
+impl<'src> Iterator for Iter<'src> {
+    type Item = char;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().filter(|&c| {
-            if c == '\r' && self.iter.peek() == Some(&'\n') {
-                // deal with CRLF line endings
-                self.col += 1;
-            } else if crate::is_vertical_ws(c) {
+        self.iter.next().filter(|c| {
+            if crate::is_vertical_ws(c) {
                 self.line += 1;
                 self.col = 1;
             } else {
