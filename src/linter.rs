@@ -1,9 +1,8 @@
+use crate::iter::Iter;
 use std::io::Read;
 
-mod iter;
-
 /// implements Perl's / Raku's "\v", i.e. vertical white space
-fn is_vertical_ws(c: &char) -> bool {
+pub fn is_vertical_ws(c: &char) -> bool {
     matches!(
         c,
         '\n' | '\u{B}' | '\u{C}' | '\r' | '\u{85}' | '\u{2028}' | '\u{2029}'
@@ -23,12 +22,12 @@ fn is_value(c: &char, opts: &Opts) -> bool {
 }
 
 #[derive(Default)]
-struct Opts {
+pub struct Opts {
     ini: bool,
     more_keys: bool,
 }
 
-fn skip_comment(iter: &mut iter::Iter) {
+fn skip_comment(iter: &mut Iter) {
     while matches!(iter.peek(), Some(c) if !is_vertical_ws(c)) {
         iter.next();
     }
@@ -36,13 +35,13 @@ fn skip_comment(iter: &mut iter::Iter) {
     iter.next();
 }
 
-fn skip_ws(iter: &mut iter::Iter) {
+fn skip_ws(iter: &mut Iter) {
     while matches!(iter.peek(), Some(c) if c.is_whitespace()) {
         iter.next();
     }
 }
 
-fn check_key(iter: &mut iter::Iter, opts: &Opts) {
+fn check_key(iter: &mut Iter, opts: &Opts) {
     let mut pseudo_raw = None;
 
     if iter.peek() == Some(&'.') {
@@ -92,7 +91,7 @@ fn check_key(iter: &mut iter::Iter, opts: &Opts) {
     }
 }
 
-fn lint(opts: &Opts, path: &str) {
+pub fn lint(opts: &Opts, path: &str) {
     let src = if path == "-" {
         let mut buffer = String::new();
         match std::io::stdin().read_to_string(&mut buffer) {
@@ -115,7 +114,7 @@ fn lint(opts: &Opts, path: &str) {
     // to replace CRLF with just LF, than dealing with CRLF everywhere
     .replace("\r\n", "\n");
 
-    let mut iter = iter::Iter::new(&src);
+    let mut iter = Iter::new(&src);
 
     loop {
         match iter.peek() {
@@ -220,10 +219,9 @@ fn lint(opts: &Opts, path: &str) {
                 }
                 // do not report on the comment yet, maybe the heading is broken
 
-                if iter.peek() == Some(&']') {
+                if iter.next() == Some(']') {
                     // heading terminated properly
                     // now output warnings
-                    iter.next();
 
                     if word.is_none() {
                         // comment_after and whitespace_after must also be None
@@ -291,7 +289,6 @@ fn lint(opts: &Opts, path: &str) {
                         }
                     }
                 } else {
-                    iter.next();
                     println!(
                         "{0}:{1}-{0}:{2} syntax error: Expected ']' for end of section heading.",
                         iter.line,

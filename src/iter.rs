@@ -3,7 +3,7 @@ use std::str::Chars;
 
 /// Wrapper around an iterator that keeps track of the current line and column
 /// position to produce proper diagnostics.
-pub(crate) struct Iter<'src> {
+pub struct Iter<'src> {
     /// The internal iterator.
     iter: Peekable<Chars<'src>>,
 
@@ -30,7 +30,7 @@ impl<'src> Iterator for Iter<'src> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next().filter(|c| {
-            if crate::is_vertical_ws(c) {
+            if crate::linter::is_vertical_ws(c) {
                 self.line += 1;
                 self.col = 1;
             } else {
