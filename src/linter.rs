@@ -23,8 +23,8 @@ fn is_value(c: &char, opts: &Opts) -> bool {
 
 #[derive(Default)]
 pub struct Opts {
-    ini: bool,
-    more_keys: bool,
+    pub ini: bool,
+    pub more_keys: bool,
 }
 
 fn skip_comment(iter: &mut Iter) {
@@ -228,21 +228,21 @@ pub fn lint(opts: &Opts, path: &str) {
 
                         if comment_before.is_none() {
                             println!(
-		                    	"{}:{}-{}:{} info: This section heading only contains a comment, is this intentional?",
-		                    	start.0,
-		                    	start.1,
-		                    	iter.line,
-		                    	iter.col,
-		                    );
+                                "{}:{}-{}:{} info: This section heading only contains a comment, is this intentional?",
+                                start.0,
+                                start.1,
+                                iter.line,
+                                iter.col,
+                            );
                         } else {
                             let start = whitespace_before.unwrap_or(start);
                             println!(
-		                    	"{}:{}-{}:{} info: This section heading is empty. You can avoid empty section headings by putting items in this section at the start of the file.",
-		                    	start.0,
-		                    	start.1,
-		                    	iter.line,
-		                    	iter.col,
-		                    );
+                                "{}:{}-{}:{} info: This section heading is empty. You can avoid empty section headings by putting items in this section at the start of the file.",
+                                start.0,
+                                start.1,
+                                iter.line,
+                                iter.col,
+                            );
                         }
                     }
 
@@ -250,11 +250,11 @@ pub fn lint(opts: &Opts, path: &str) {
                         // maybe this was commented by mistake
                         let start = whitespace_before.unwrap_or(start);
                         println!(
-                        	"{}:{}-{}:{} info: This is not a good place to put a comment, consider putting it before the section heading.",
-                        	start.0,
-                        	start.1,
-                        	end.0,
-                        	end.1,
+                            "{}:{}-{}:{} info: This is not a good place to put a comment, consider putting it before the section heading.",
+                            start.0,
+                            start.1,
+                            end.0,
+                            end.1,
                         );
                     } else if let Some(end) = whitespace_before {
                         if end.0 != start.0 {
@@ -271,11 +271,11 @@ pub fn lint(opts: &Opts, path: &str) {
                             .or(word)
                             .expect("Detected a comment after a nonexistent section heading.");
                         println!(
-                        	"{}:{}-{}:{} info: This is not a good place to put a comment, consider putting it after the section heading.",
-                        	start.0,
-                        	start.1,
-                        	end.0,
-                        	end.1,
+                            "{}:{}-{}:{} info: This is not a good place to put a comment, consider putting it after the section heading.",
+                            start.0,
+                            start.1,
+                            end.0,
+                            end.1,
                         );
                     } else if let Some(end) = whitespace_after {
                         let start =

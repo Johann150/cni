@@ -1,5 +1,5 @@
 [package]
-name = "cni_format_utils"
+name = "cniutil"
 version = "0.5.1"
 authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
 edition = "2018"
