@@ -1,10 +1,6 @@
 use crate::iter::Iter;
+use cni_format::Opts;
 use std::io::Read;
-
-pub struct Opts {
-    pub ini: bool,
-    pub more_keys: bool,
-}
 
 // character classification
 

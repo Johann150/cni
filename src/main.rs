@@ -12,34 +12,39 @@ fn main() {
         .setting(AppSettings::GlobalVersion)
         .author(crate_authors!(", "))
         .setting(AppSettings::SubcommandRequiredElseHelp)
+        // these arguments are available for all subcommands
+        .arg(
+            Arg::with_name("more-keys")
+                .help("Enables the more-keys extension.")
+                .overrides_with("no-more-keys")
+                .long("more-keys")
+                .global(true)
+        )
+        .arg(
+            Arg::with_name("no-more-keys")
+                .help("Disables the more-keys extension. [default]")
+                .overrides_with("more-keys")
+                .long("no-more-keys")
+                .global(true)
+        )
+        .arg(
+            Arg::with_name("ini")
+                .help("Enables the ini compatibility extension.")
+                .overrides_with("no-ini")
+                .long("ini")
+                .global(true)
+        )
+        .arg(
+            Arg::with_name("no-ini")
+                .help("Disables the ini compatibility extension. [default]")
+                .overrides_with("ini")
+                .long("no-ini")
+                .global(true)
+        )
         .subcommand(
             SubCommand::with_name("lint")
                 .setting(AppSettings::UnifiedHelpMessage)
                 .about("comments on validity and style of CNI files")
-                .arg(
-                    Arg::with_name("more-keys")
-                        .help("Enables the more-keys extension.")
-                        .group("more-keys")
-                        .long("more-keys")
-                )
-                .arg(
-                    Arg::with_name("no-more-keys")
-                        .help("Disables the more-keys extension. [default]")
-                        .group("more-keys")
-                        .long("no-more-keys")
-                )
-                .arg(
-                    Arg::with_name("ini")
-                        .help("Enables the ini compatibility extension.")
-                        .group("ini")
-                        .long("ini")
-                )
-                .arg(
-                    Arg::with_name("no-ini")
-                        .help("Disables the ini compatibility extension. [default]")
-                        .group("ini")
-                        .long("no-ini")
-                )
                 .arg(
                     Arg::with_name("FILES")
                         .help("The input files to read. '-' will result in stdin being read.")
@@ -129,7 +134,7 @@ fn main() {
 
     match matches.subcommand() {
         ("lint", Some(matches)) => {
-            let opts = linter::Opts {
+            let opts = cni_format::Opts {
                 ini: matches.is_present("ini"),
                 more_keys: matches.is_present("more-keys"),
             };
@@ -147,7 +152,12 @@ fn main() {
             }
         }
         ("dump", Some(matches)) => {
-            let (prefix, infix, postfix) = if matches.is_present("csv") {
+            let opts = cni_format::Opts {
+                ini: matches.is_present("ini"),
+                more_keys: matches.is_present("more-keys"),
+            };
+
+            let format = if matches.is_present("csv") {
                 ("", ",\"", "\"\n")
             } else if matches.is_present("null") {
                 ("", "=", "\0")
@@ -169,16 +179,19 @@ fn main() {
                 ("", " = `", "`")
             };
 
-            dumper::dump(matches.values_of("FILES").unwrap(), prefix, infix, postfix);
+            dumper::dump(matches.values_of("FILES").unwrap(), format, opts);
         }
         ("format", Some(matches)) => {
-            let opts = formatter::Opts {
-                // the first unwrap is okay because there is a default value in clap
-                // the second unwrap is okay because of the validator in clap
-                section_threshold: matches.value_of("threshold").unwrap().parse().unwrap(),
+            let opts = cni_format::Opts {
+                ini: matches.is_present("ini"),
+                more_keys: matches.is_present("more-keys"),
             };
 
-            formatter::format(matches.value_of("FILE").unwrap(), &opts);
+            // the first unwrap is okay because there is a default value in clap
+            // the second unwrap is okay because of the validator in clap
+            let section_threshold = matches.value_of("threshold").unwrap().parse().unwrap();
+
+            formatter::format(matches.value_of("FILE").unwrap(), section_threshold, opts);
         }
         _ => unreachable!("unknown subcommand"),
     }
