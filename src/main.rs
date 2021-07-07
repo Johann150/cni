@@ -51,41 +51,48 @@ fn main() {
                 .arg(
                     Arg::with_name("cni")
                         .help("The output format should be CNI. (This is the default)")
-                        .overrides_with_all(&["csv", "prefix", "infix", "postfix"])
+                        .overrides_with_all(&["csv", "null", "prefix", "infix", "postfix", "postfix-nonl"])
                         .long("cni")
                 )
                 .arg(
                     Arg::with_name("csv")
                         .help("The output format should be comma separated values.")
-                        .overrides_with_all(&["cni", "prefix", "infix", "postfix"])
+                        .overrides_with_all(&["cni", "null", "prefix", "infix", "postfix", "postfix-nonl"])
                         .long("csv")
                         .short("c")
                 )
                 .arg(
+                    Arg::with_name("null")
+                        .help("Records are terminated by a null character instead of a line feed to better accomodate values containing line feeds.")
+                        .overrides_with_all(&["cni", "csv", "prefix", "infix", "postfix", "postfix-nonl"])
+                        .long("null")
+                        .short("0")
+                )
+                .arg(
                     Arg::with_name("prefix")
                         .help("Specifies a custom line prefix. Can be used together with --infix and --postfix.")
-                        .overrides_with_all(&["cni", "csv"])
+                        .overrides_with_all(&["cni", "csv", "null"])
                         .long("prefix")
                         .value_name("prefix")
                 )
                 .arg(
                     Arg::with_name("infix")
                         .help("Specifies a custom line prefix. Can be used together with --prefix and --postfix.")
-                        .overrides_with_all(&["cni", "csv"])
+                        .overrides_with_all(&["cni", "csv", "null"])
                         .long("infix")
                         .value_name("infix")
                 )
                 .arg(
                     Arg::with_name("postfix")
                         .help("Specifies a custom line postfix, but a line feed will be added to the specified string. Can be used together with --prefix and --infix.")
-                        .overrides_with_all(&["cni", "csv", "postfix-nonl"])
+                        .overrides_with_all(&["cni", "csv", "null", "postfix-nonl"])
                         .long("postfix")
                         .value_name("postfix")
                 )
                 .arg(
                     Arg::with_name("postfix-nonl")
                         .help("Specifies a custom line postfix, no lin feed will be added. Can be used together with --prefix and --infix.")
-                        .overrides_with_all(&["cni", "csv", "postfix"])
+                        .overrides_with_all(&["cni", "csv", "null", "postfix"])
                         .long("postfixx")
                         .value_name("postfix")
                 )
@@ -120,6 +127,8 @@ fn main() {
         ("dump", Some(matches)) => {
             let (prefix, infix, postfix) = if matches.is_present("csv") {
                 ("", ",\"", "\"\n")
+            } else if matches.is_present("null") {
+                ("", "=", "\0")
             } else if matches.is_present("prefix")
                 || matches.is_present("infix")
                 || matches.is_present("postfix")
