@@ -3,18 +3,7 @@ use std::cmp::Ordering;
 fn format_value(value: String) -> String {
     if value.is_empty() {
         "#empty".to_string()
-    } else if value.contains(|c| {
-        c == '`'
-            || crate::is_vertical_ws(c)
-            || crate::is_comment(
-                c,
-                // just assume ini compatibility is enabled for safety
-                &super::Opts {
-                    ini: true,
-                    more_keys: false,
-                },
-            )
-    }) {
+    } else if value.contains(|c| c == '`' || crate::is_vertical_ws(c) || c == '#' || c == ';') {
         // This has to be stored as a raw value.
         format!("`{}`", value.replace("`", "``"))
     } else {

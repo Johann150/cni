@@ -1,6 +1,6 @@
 [package]
 name = "cniutil"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
 edition = "2018"
 description = "various utilities for the CNI configuration format"

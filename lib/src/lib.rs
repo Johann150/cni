@@ -92,16 +92,16 @@ pub use serializer::to_str;
 
 /// A struct to pass parsing options. Contains the switches to enable
 /// the different extensions.
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct Opts {
     /// Whether the ini compatibility is used. Default: false
     ///
     /// This allows semicolons to be used to start comments.
-    ini: bool,
+    pub ini: bool,
     /// Whether the `more-keys` extension is used. Default: false
     ///
     /// This allows a wider range of characters in keys and section headings.
-    more_keys: bool,
+    pub more_keys: bool,
 }
 
 mod iter;
@@ -114,11 +114,11 @@ fn is_vertical_ws(c: char) -> bool {
     )
 }
 
-fn is_comment(c: char, opts: &Opts) -> bool {
+fn is_comment(c: char, opts: Opts) -> bool {
     c == '#' || (opts.ini && c == ';')
 }
 
-fn is_key(c: char, opts: &Opts) -> bool {
+fn is_key(c: char, opts: Opts) -> bool {
     if opts.more_keys {
         !matches!(c, '[' | ']' | '=' | '`') && !is_comment(c, opts) && !c.is_whitespace()
     } else {
@@ -183,7 +183,7 @@ impl<I: Iterator<Item = char>> CniParser<I> {
         // otherwise do not because we might have also skipped over line ends
         if matches!(
             self.iter.peek(),
-            Some(&c) if is_comment(c, &self.opts)
+            Some(&c) if is_comment(c, self.opts)
         ) {
             // continue until next vertical whitespace or EOF
             while matches!(self.iter.next(), Some(c) if !is_vertical_ws(c)) {}
@@ -193,7 +193,7 @@ impl<I: Iterator<Item = char>> CniParser<I> {
     fn parse_key(&mut self) -> Result<String, &'static str> {
         let mut key = String::new();
 
-        while matches!(self.iter.peek(), Some(&c) if is_key(c, &self.opts)) {
+        while matches!(self.iter.peek(), Some(&c) if is_key(c, self.opts)) {
             key.push(self.iter.next().unwrap());
         }
 
@@ -236,7 +236,7 @@ impl<I: Iterator<Item = char>> CniParser<I> {
             }
         } else {
             // normal value: no comment starting character but white space, but not vertical space
-            while matches!(self.iter.peek(), Some(&c) if !is_comment(c, &self.opts) && !( c.is_whitespace() && is_vertical_ws(c) ))
+            while matches!(self.iter.peek(), Some(&c) if !is_comment(c, self.opts) && !( c.is_whitespace() && is_vertical_ws(c) ))
             {
                 value.push(self.iter.next().unwrap());
             }
@@ -269,7 +269,7 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
                 // empty line
                 self.iter.next();
                 continue;
-            } else if is_comment(c, &self.opts) {
+            } else if is_comment(c, self.opts) {
                 self.skip_comment();
             } else if c == '[' {
                 // section heading
