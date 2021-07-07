@@ -1,6 +1,7 @@
 use clap::{crate_authors, crate_description, crate_version, App, AppSettings, Arg, SubCommand};
 
 mod dumper;
+mod formatter;
 mod iter;
 mod linter;
 
@@ -13,6 +14,7 @@ fn main() {
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("lint")
+                .setting(AppSettings::UnifiedHelpMessage)
                 .about("comments on validity and style of CNI files")
                 .arg(
                     Arg::with_name("more-keys")
@@ -22,7 +24,7 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("no-more-keys")
-                        .help("Disables the more-keys extension. (default)")
+                        .help("Disables the more-keys extension. [default]")
                         .group("more-keys")
                         .long("no-more-keys")
                 )
@@ -34,7 +36,7 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("no-ini")
-                        .help("Disables the ini compatibility extension. (default)")
+                        .help("Disables the ini compatibility extension. [default]")
                         .group("ini")
                         .long("no-ini")
                 )
@@ -47,10 +49,11 @@ fn main() {
         )
         .subcommand(
             SubCommand::with_name("dump")
+                .setting(AppSettings::UnifiedHelpMessage)
                 .about("reads in CNI files and shows the combined result in the specified format")
                 .arg(
                     Arg::with_name("cni")
-                        .help("The output format should be CNI. (This is the default)")
+                        .help("The output format should be CNI. [default]")
                         .overrides_with_all(&["csv", "null", "prefix", "infix", "postfix", "postfix-nonl"])
                         .long("cni")
                 )
@@ -103,6 +106,25 @@ fn main() {
                         .default_value("-")
                 )
         )
+        .subcommand(
+            SubCommand::with_name("format")
+                .setting(AppSettings::UnifiedHelpMessage)
+                .alias("fmt")
+                .about("Reads in a CNI file and outputs a strictly formatted representation of the input")
+                .arg(
+                    Arg::with_name("threshold")
+                        .help("Specifies the threshold of how many entries have to be in a section to make use of a section header.")
+                        .long("section-threshold")
+                        .short("n")
+                        .default_value("10")
+                        .validator(|arg| arg.parse::<usize>().map(|_| ()).map_err(|e| e.to_string()))
+                )
+                .arg(
+                    Arg::with_name("FILE")
+                        .help("The input file to read. '-' will result in stdin being read.")
+                        .default_value("-")
+                )
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -148,6 +170,15 @@ fn main() {
             };
 
             dumper::dump(matches.values_of("FILES").unwrap(), prefix, infix, postfix);
+        }
+        ("format", Some(matches)) => {
+            let opts = formatter::Opts {
+                // the first unwrap is okay because there is a default value in clap
+                // the second unwrap is okay because of the validator in clap
+                section_threshold: matches.value_of("threshold").unwrap().parse().unwrap(),
+            };
+
+            formatter::format(matches.value_of("FILE").unwrap(), &opts);
         }
         _ => unreachable!("unknown subcommand"),
     }

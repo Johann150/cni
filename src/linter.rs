@@ -1,6 +1,13 @@
 use crate::iter::Iter;
 use std::io::Read;
 
+pub struct Opts {
+    pub ini: bool,
+    pub more_keys: bool,
+}
+
+// character classification
+
 /// implements Perl's / Raku's "\v", i.e. vertical white space
 pub fn is_vertical_ws(c: &char) -> bool {
     matches!(
@@ -21,11 +28,7 @@ fn is_value(c: &char, opts: &Opts) -> bool {
     !(*c == '#' || (opts.ini && *c == ';') || is_vertical_ws(c))
 }
 
-#[derive(Default)]
-pub struct Opts {
-    pub ini: bool,
-    pub more_keys: bool,
-}
+// tokens
 
 fn skip_comment(iter: &mut Iter) {
     while matches!(iter.peek(), Some(c) if !is_vertical_ws(c)) {
@@ -90,6 +93,8 @@ fn check_key(iter: &mut Iter, opts: &Opts) {
         );
     }
 }
+
+// main linter parser
 
 pub fn lint(opts: &Opts, path: &str) {
     let src = if path == "-" {

@@ -11,7 +11,7 @@ publish = false
 
 [dependencies]
 utf = "0.1"
-cni_format = { version = "0.5", path = "lib" }
+cni_format = { version = "0.5", path = "lib", features = [ "serializer" ] }
 clap = "2.33"
 
 [workspace]
