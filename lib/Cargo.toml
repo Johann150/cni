@@ -1,6 +1,6 @@
 [package]
 name = "cni_format"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
 edition = "2018"
 description = "parser and serializer for the CNI configuration format"
@@ -19,10 +19,6 @@ serde_json = "1.0"
 
 [features]
 default = ["api"]
-# enables the INI compatibility `ini`
-ini = []
-# enables ext `more-keys`
-more-keys = []
 # enables the recommended API
 api = []
 # enables the serializer

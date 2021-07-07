@@ -4,21 +4,47 @@
 //! At the bottom are some additional serialization-specific tests.
 
 macro_rules! cni_test (
-	($name:ident, $path:expr) => {
-		#[test]
-		fn $name(){
-			let data = serde_json::from_str(include_str!(concat!($path, ".json"))).unwrap();
-			assert_eq!(
-				crate::from_str(&crate::to_str(&data)).unwrap(),
-				data
-			);
-		}
-	};
-	($name:ident, $path:expr, fail) => {
-		// do nothing as there is no json file
-		// this is just here so the rest of the file can be copied vebatim
-		// from src/tests/mod.rs
-	};
+    ($name:ident, $path:expr) => {
+        #[test]
+        fn $name(){
+            let data = serde_json::from_str(include_str!(concat!($path, ".json"))).unwrap();
+            assert_eq!(
+                crate::from_str(&crate::to_str(&data)).unwrap(),
+                data
+            );
+        }
+    };
+    ($name:ident, $path:expr, ini) => {
+        #[test]
+        fn $name(){
+            let data = serde_json::from_str(include_str!(concat!($path, ".json"))).unwrap();
+            assert_eq!(
+                crate::from_str_opts(
+                    &crate::to_str(&data),
+                    crate::Opts{ ini: true, more_keys: false },
+                ).unwrap(),
+                data
+            );
+        }
+    };
+    ($name:ident, $path:expr, more_keys) => {
+        #[test]
+        fn $name(){
+            let data = serde_json::from_str(include_str!(concat!($path, ".json"))).unwrap();
+            assert_eq!(
+                crate::from_str_opts(
+                    &crate::to_str(&data),
+                    crate::Opts{ ini: false, more_keys: true },
+                ).unwrap(),
+                data
+            );
+        }
+    };
+    ($name:ident, $path:expr, fail) => {
+        // do nothing as there is no json file
+        // this is just here so the rest of the file can be copied vebatim
+        // from src/tests/mod.rs
+    };
 );
 
 mod core {
@@ -61,16 +87,16 @@ mod core {
 }
 
 mod ini {
-    cni_test!(ini01, "cni/tests/ini/01");
+    cni_test!(ini01, "cni/tests/ini/01", ini);
 }
 
 mod ext {
-    cni_test!(more_keys, "cni/tests/ext/more-keys");
+    cni_test!(more_keys, "cni/tests/ext/more-keys", more_keys);
 }
 
 mod bundle {
     cni_test!(exotic, "cni/tests/bundle/exotic");
-    cni_test!(common, "cni/tests/bundle/common");
+    cni_test!(common, "cni/tests/bundle/common", ini);
 }
 
 use std::collections::{BTreeMap, HashMap};

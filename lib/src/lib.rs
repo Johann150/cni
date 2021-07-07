@@ -90,6 +90,20 @@ mod serializer;
 #[cfg(any(feature = "serializer", test, doctest, doc))]
 pub use serializer::to_str;
 
+/// A struct to pass parsing options. Contains the switches to enable
+/// the different extensions.
+#[derive(Default)]
+pub struct Opts {
+    /// Whether the ini compatibility is used. Default: false
+    ///
+    /// This allows semicolons to be used to start comments.
+    ini: bool,
+    /// Whether the `more-keys` extension is used. Default: false
+    ///
+    /// This allows a wider range of characters in keys and section headings.
+    more_keys: bool,
+}
+
 mod iter;
 
 /// implements Perl's / Raku's "\v", i.e. vertical white space
@@ -100,13 +114,13 @@ fn is_vertical_ws(c: char) -> bool {
     )
 }
 
-fn is_comment(c: char) -> bool {
-    c == '#' || ((cfg!(feature = "ini") || cfg!(test)) && c == ';')
+fn is_comment(c: char, opts: &Opts) -> bool {
+    c == '#' || (opts.ini && c == ';')
 }
 
-fn is_key(c: char) -> bool {
-    if cfg!(feature = "more-keys") || cfg!(test) {
-        !matches!(c, '[' | ']' | '=' | '`') && !is_comment(c) && !c.is_whitespace()
+fn is_key(c: char, opts: &Opts) -> bool {
+    if opts.more_keys {
+        !matches!(c, '[' | ']' | '=' | '`') && !is_comment(c, opts) && !c.is_whitespace()
     } else {
         matches!(c, '0'..='9' | 'a'..='z' | 'A'..='Z' | '-' | '_' | '.')
     }
@@ -125,15 +139,30 @@ pub struct CniParser<I: Iterator<Item = char>> {
     iter: iter::Iter<I>,
     /// The current section name.
     section: String,
+    /// The selected parsing options.
+    opts: Opts,
 }
 
 impl<I: Iterator<Item = char>> CniParser<I> {
     /// Creates a new `CniParser` that will parse the given CNI format text.
+    /// The parsing options are set to the defaults.
     #[must_use = "iterators are lazy and do nothing unless consumed"]
     pub fn new(iter: I) -> Self {
         Self {
             iter: iter::Iter::new(iter),
             section: String::new(),
+            opts: Opts::default(),
+        }
+    }
+
+    /// Creates a new `CniParser` that will parse the given CNI format text
+    /// with the given parsing options.
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    pub fn new_opts(iter: I, opts: Opts) -> Self {
+        Self {
+            iter: iter::Iter::new(iter),
+            section: String::new(),
+            opts,
         }
     }
 
@@ -154,7 +183,7 @@ impl<I: Iterator<Item = char>> CniParser<I> {
         // otherwise do not because we might have also skipped over line ends
         if matches!(
             self.iter.peek(),
-            Some(&c) if is_comment(c)
+            Some(&c) if is_comment(c, &self.opts)
         ) {
             // continue until next vertical whitespace or EOF
             while matches!(self.iter.next(), Some(c) if !is_vertical_ws(c)) {}
@@ -164,7 +193,7 @@ impl<I: Iterator<Item = char>> CniParser<I> {
     fn parse_key(&mut self) -> Result<String, &'static str> {
         let mut key = String::new();
 
-        while matches!(self.iter.peek(), Some(&c) if is_key(c)) {
+        while matches!(self.iter.peek(), Some(&c) if is_key(c, &self.opts)) {
             key.push(self.iter.next().unwrap());
         }
 
@@ -207,7 +236,7 @@ impl<I: Iterator<Item = char>> CniParser<I> {
             }
         } else {
             // normal value: no comment starting character but white space, but not vertical space
-            while matches!(self.iter.peek(), Some(&c) if !is_comment(c) && !( c.is_whitespace() && is_vertical_ws(c) ))
+            while matches!(self.iter.peek(), Some(&c) if !is_comment(c, &self.opts) && !( c.is_whitespace() && is_vertical_ws(c) ))
             {
                 value.push(self.iter.next().unwrap());
             }
@@ -240,7 +269,7 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
                 // empty line
                 self.iter.next();
                 continue;
-            } else if is_comment(c) {
+            } else if is_comment(c, &self.opts) {
                 self.skip_comment();
             } else if c == '[' {
                 // section heading
@@ -313,6 +342,7 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
 }
 
 /// Parses CNI format text and returns the resulting key/value store.
+/// The [parsing options][Opts] are set to the default values.
 ///
 /// This just constructs a [`CniParser`] and collects it.
 ///
@@ -323,4 +353,18 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
 /// will contain a message explaining the error.
 pub fn from_str(text: &str) -> Result<HashMap<String, String>, String> {
     CniParser::from(text).collect()
+}
+
+/// Parses CNI format text and returns the resulting key/value store,
+/// using the specified options.
+///
+/// This just constructs a [`CniParser`] and collects it.
+///
+/// For more information see the [crate level documentation](index.html).
+///
+/// # Errors
+/// Returns an `Err` if the given text is not in a valid CNI format. The `Err`
+/// will contain a message explaining the error.
+pub fn from_str_opts(text: &str, opts: Opts) -> Result<HashMap<String, String>, String> {
+    CniParser::new_opts(text.chars(), opts).collect()
 }

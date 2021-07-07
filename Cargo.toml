@@ -1,6 +1,6 @@
 [package]
 name = "cniutil"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
 edition = "2018"
 description = "various utilities for the CNI configuration format"
@@ -11,7 +11,7 @@ publish = false
 
 [dependencies]
 utf = "0.1"
-cni_format = { version = "0.5", path = "lib", features = [ "serializer" ] }
+cni_format = { version = "0.6", path = "lib", features = [ "serializer" ] }
 clap = "2.33"
 
 [workspace]

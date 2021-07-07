@@ -2,21 +2,45 @@
 //! cni specification repository.
 
 macro_rules! cni_test (
-	($name:ident, $path:expr) => {
-		#[test]
-		fn $name(){
-			assert_eq!(
-				crate::from_str(include_str!(concat!($path, ".cni"))).unwrap(),
-				serde_json::from_str(include_str!(concat!($path, ".json"))).unwrap()
-			);
-		}
-	};
-	($name:ident, $path:expr, fail) => {
-		#[test]
-		fn $name(){
-			assert!(crate::from_str(include_str!(concat!($path, "_fail.cni"))).is_err());
-		}
-	};
+    ($name:ident, $path:expr) => {
+        #[test]
+        fn $name(){
+            assert_eq!(
+                crate::from_str(include_str!(concat!($path, ".cni"))).unwrap(),
+                serde_json::from_str(include_str!(concat!($path, ".json"))).unwrap()
+            );
+        }
+    };
+    ($name:ident, $path:expr, ini) => {
+        #[test]
+        fn $name(){
+            assert_eq!(
+                crate::from_str_opts(
+                    include_str!(concat!($path, ".cni")),
+                    crate::Opts{ ini: true, more_keys: false },
+                ).unwrap(),
+                serde_json::from_str(include_str!(concat!($path, ".json"))).unwrap()
+            );
+        }
+    };
+    ($name:ident, $path:expr, more_keys) => {
+        #[test]
+        fn $name(){
+            assert_eq!(
+                crate::from_str_opts(
+                    include_str!(concat!($path, ".cni")),
+                    crate::Opts{ ini: false, more_keys: true },
+                ).unwrap(),
+                serde_json::from_str(include_str!(concat!($path, ".json"))).unwrap()
+            );
+        }
+    };
+    ($name:ident, $path:expr, fail) => {
+        #[test]
+        fn $name(){
+            assert!(crate::from_str(include_str!(concat!($path, "_fail.cni"))).is_err());
+        }
+    };
 );
 
 mod api;
@@ -60,14 +84,14 @@ mod core {
 }
 
 mod ini {
-    cni_test!(ini01, "cni/tests/ini/01");
+    cni_test!(ini01, "cni/tests/ini/01", ini);
 }
 
 mod ext {
-    cni_test!(more_keys, "cni/tests/ext/more-keys");
+    cni_test!(more_keys, "cni/tests/ext/more-keys", more_keys);
 }
 
 mod bundle {
     cni_test!(exotic, "cni/tests/bundle/exotic");
-    cni_test!(common, "cni/tests/bundle/common");
+    cni_test!(common, "cni/tests/bundle/common", ini);
 }
