@@ -27,7 +27,8 @@ pub fn format(file: &str, section_threshold: usize, opts: cni_format::Opts) {
         };
 
     // print the leaves in the top level
-    println!("{}", cni_format::to_str(map.sub_leaves("")));
+    print!("{}", cni_format::to_str(map.sub_leaves("")));
+    map.retain(|key, _| key.contains('.'));
 
     let mut sections = map.sub_tree("").keys().cloned().collect::<Vec<_>>();
     sections.sort_unstable_by(|a, b|
@@ -35,8 +36,8 @@ pub fn format(file: &str, section_threshold: usize, opts: cni_format::Opts) {
         a.len().cmp(&b.len()).reverse().then_with(|| a.cmp(b)));
     for section in sections {
         if map.sub_tree(&section).len() >= section_threshold {
-            println!(
-                "[{}]\n{}\n",
+            print!(
+                "[{}]\n{}",
                 section,
                 cni_format::to_str(map.sub_tree(&section))
             );
@@ -44,5 +45,15 @@ pub fn format(file: &str, section_threshold: usize, opts: cni_format::Opts) {
         }
     }
 
-    println!("{}", cni_format::to_str(map));
+    // don't use cni_format::to_str here so there are no section headings
+    for (key, value) in map {
+        print!("{} = ", key);
+        if value.is_empty() {
+            println!("#empty");
+        } else if value.contains(|c| c=='`'||c=='#'||c==';'||crate::linter::is_vertical_ws(&c)) {
+            println!("`{}`", value.replace("`", "``"));
+        } else {
+            println!("{}", value);
+        }
+    }
 }
