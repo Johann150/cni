@@ -1,4 +1,5 @@
 use clap::{crate_authors, crate_description, crate_version, App, AppSettings, Arg, SubCommand};
+use std::collections::HashMap;
 
 mod dumper;
 mod formatter;
@@ -12,33 +13,28 @@ fn main() {
         .setting(AppSettings::GlobalVersion)
         .author(crate_authors!(", "))
         .setting(AppSettings::SubcommandRequiredElseHelp)
+        .setting(AppSettings::UnifiedHelpMessage)
         // these arguments are available for all subcommands
         .arg(
-            Arg::with_name("more-keys")
-                .help("Enables the more-keys extension.")
-                .overrides_with("no-more-keys")
-                .long("more-keys")
+            Arg::with_name("extension")
+                .help("Enable CNI extensions.")
+                .long("with")
+                .possible_values(&["ini", "more-keys"])
+                .case_insensitive(true)
+                .multiple(true)
+                .require_delimiter(true)
+                .require_equals(true)
                 .global(true)
         )
         .arg(
-            Arg::with_name("no-more-keys")
-                .help("Disables the more-keys extension. [default]")
-                .overrides_with("more-keys")
-                .long("no-more-keys")
-                .global(true)
-        )
-        .arg(
-            Arg::with_name("ini")
-                .help("Enables the ini compatibility extension.")
-                .overrides_with("no-ini")
-                .long("ini")
-                .global(true)
-        )
-        .arg(
-            Arg::with_name("no-ini")
-                .help("Disables the ini compatibility extension. [default]")
-                .overrides_with("ini")
-                .long("no-ini")
+            Arg::with_name("removed-extension")
+                .help("Disable CNI extensions.")
+                .long("without")
+                .possible_values(&["ini", "more-keys"])
+                .case_insensitive(true)
+                .multiple(true)
+                .require_delimiter(true)
+                .require_equals(true)
                 .global(true)
         )
         .subcommand(
@@ -132,13 +128,35 @@ fn main() {
         )
         .get_matches();
 
+    // get enabled CNI extensions
+    let opts = {
+        let mut extensions = matches
+            .values_of("extension")
+            .unwrap()
+            .zip(matches.indices_of("extension").unwrap())
+            // removes duplicates
+            .collect::<HashMap<_, _>>();
+        let removed_extensions = matches
+            .values_of("removed-extension")
+            .unwrap()
+            .zip(matches.indices_of("removed-extension").unwrap())
+            // removes duplicates
+            .collect::<HashMap<_, _>>();
+
+        for (removed, i) in removed_extensions {
+            if matches!(extensions.get(removed), Some(&j) if j<i) {
+                extensions.remove(removed);
+            }
+        }
+
+        cni_format::Opts {
+            ini: extensions.contains_key("ini"),
+            more_keys: extensions.contains_key("more-keys"),
+        }
+    };
+
     match matches.subcommand() {
         ("lint", Some(matches)) => {
-            let opts = cni_format::Opts {
-                ini: matches.is_present("ini"),
-                more_keys: matches.is_present("more-keys"),
-            };
-
             let files = matches.values_of("FILES").unwrap();
 
             if files.len() == 1 {
@@ -152,11 +170,6 @@ fn main() {
             }
         }
         ("dump", Some(matches)) => {
-            let opts = cni_format::Opts {
-                ini: matches.is_present("ini"),
-                more_keys: matches.is_present("more-keys"),
-            };
-
             let format = if matches.is_present("csv") {
                 ("", ",\"", "\"\n")
             } else if matches.is_present("null") {
@@ -182,11 +195,6 @@ fn main() {
             dumper::dump(matches.values_of("FILES").unwrap(), format, opts);
         }
         ("format", Some(matches)) => {
-            let opts = cni_format::Opts {
-                ini: matches.is_present("ini"),
-                more_keys: matches.is_present("more-keys"),
-            };
-
             // the first unwrap is okay because there is a default value in clap
             // the second unwrap is okay because of the validator in clap
             let section_threshold = matches.value_of("threshold").unwrap().parse().unwrap();
