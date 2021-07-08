@@ -99,18 +99,26 @@ fn main() {
 
     // get enabled CNI extensions
     let opts = {
-        let mut extensions = matches
-            .values_of("extension")
-            .unwrap()
-            .zip(matches.indices_of("extension").unwrap())
-            // removes duplicates
-            .collect::<HashMap<_, _>>();
-        let removed_extensions = matches
-            .values_of("removed-extension")
-            .unwrap()
-            .zip(matches.indices_of("removed-extension").unwrap())
-            // removes duplicates
-            .collect::<HashMap<_, _>>();
+        let mut extensions = if matches.is_present("extension") {
+            matches
+                .values_of("extension")
+                .unwrap()
+                .zip(matches.indices_of("extension").unwrap())
+                // removes duplicates
+                .collect::<HashMap<_, _>>()
+        } else {
+            HashMap::new()
+        };
+        let removed_extensions = if matches.is_present("removed-extension") {
+            matches
+                .values_of("removed-extension")
+                .unwrap()
+                .zip(matches.indices_of("removed-extension").unwrap())
+                // removes duplicates
+                .collect::<HashMap<_, _>>()
+        } else {
+            HashMap::new()
+        };
 
         for (removed, i) in removed_extensions {
             if matches!(extensions.get(removed), Some(&j) if j<i) {
