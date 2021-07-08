@@ -227,23 +227,25 @@ pub fn lint(opts: &Opts, path: &str) {
                     if word.is_none() {
                         // comment_after and whitespace_after must also be None
 
-                        if comment_before.is_none() {
+                        if let Some(end) = comment_before {
                             println!(
                                 "{}:{}-{}:{} info: This section heading only contains a comment, is this intentional?",
                                 start.0,
                                 start.1,
-                                iter.line,
-                                iter.col,
+                                end.0,
+                                end.1,
                             );
-                        } else {
-                            let start = whitespace_before.unwrap_or(start);
-                            println!(
-                                "{}:{}-{}:{} info: This section heading is empty. You can avoid empty section headings by putting items in this section at the start of the file.",
-                                start.0,
-                                start.1,
-                                iter.line,
-                                iter.col,
-                            );
+                        } else if let Some(end) = whitespace_before {
+                            // only report if there are linebreaks
+                            if end.0 > start.0 {
+                                println!(
+                                    "{}:{}-{}:{} info: A line break here may be confusing.",
+                                    start.0,
+                                    start.1,
+                                    end.0,
+                                    end.1,
+                                );
+                            }
                         }
                     }
 
