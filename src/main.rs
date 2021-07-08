@@ -60,10 +60,9 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("threshold")
-                        .help("Specifies the threshold of how many entries have to be in a section to make use of a section header. 0 means no section headers will be used.")
+                        .help("Can only be used with --cni. Specifies the threshold of how many entries have to be in a section to make use of a section header. 0 means no section headers will be used. [default: 10]")
                         .long("section-threshold")
                         .short("n")
-                        .default_value("10")
                         .validator(|arg| arg.parse::<usize>().map(|_| ()).map_err(|e| e.to_string()))
                         .requires("cni")
                 )
@@ -166,9 +165,8 @@ fn main() {
             } else {
                 // must be the default CNI formatting
 
-                // the first unwrap is okay because there is a default value in clap
-                // the second unwrap is okay because of the validator in clap
-                let section_threshold = matches.value_of("threshold").unwrap().parse().unwrap();
+                // the unwrap is okay because of the validator in clap
+                let section_threshold = matches.value_of("threshold").unwrap_or("10").parse().unwrap();
                 Format::Cni(section_threshold)
             };
 
