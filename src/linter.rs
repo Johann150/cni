@@ -240,10 +240,7 @@ pub fn lint(opts: &Opts, path: &str) {
                             if end.0 > start.0 {
                                 println!(
                                     "{}:{}-{}:{} info: A line break here may be confusing.",
-                                    start.0,
-                                    start.1,
-                                    end.0,
-                                    end.1,
+                                    start.0, start.1, end.0, end.1,
                                 );
                             }
                         }

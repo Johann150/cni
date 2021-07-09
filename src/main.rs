@@ -166,7 +166,11 @@ fn main() {
                 // must be the default CNI formatting
 
                 // the unwrap is okay because of the validator in clap
-                let section_threshold = matches.value_of("threshold").unwrap_or("10").parse().unwrap();
+                let section_threshold = matches
+                    .value_of("threshold")
+                    .unwrap_or("10")
+                    .parse()
+                    .unwrap();
                 Format::Cni(section_threshold)
             };
 
