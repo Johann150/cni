@@ -36,7 +36,7 @@ pub trait CniExt<V>: Sized {
     /// Use e.g. [`HashMap::keys`] to get `KeyTree`.
     ///
     /// # Examples
-    /// ```ignore <https://github.com/rust-lang/rust/issues/67295>
+    /// ```
     /// use std::collections::HashMap;
     /// use cni_format::CniExt;
     ///
@@ -71,7 +71,7 @@ pub trait CniExt<V>: Sized {
     /// Use e.g. [`HashMap::keys`] to get `KeyLeaves`.
     ///
     /// # Examples
-    /// ```ignore <https://github.com/rust-lang/rust/issues/67295>
+    /// ```
     /// use std::collections::HashMap;
     /// use cni_format::CniExt;
     ///
@@ -103,7 +103,7 @@ pub trait CniExt<V>: Sized {
     /// The CNI specification calls this `WalkTree`.
     ///
     /// # Examples
-    /// ```ignore <https://github.com/rust-lang/rust/issues/67295>
+    /// ```
     /// use std::collections::HashMap;
     /// use cni_format::CniExt;
     ///
@@ -141,7 +141,7 @@ pub trait CniExt<V>: Sized {
     /// The CNI specification calls this `WalkLeaves`.
     ///
     /// # Examples
-    /// ```ignore <https://github.com/rust-lang/rust/issues/67295>
+    /// ```
     /// use std::collections::HashMap;
     /// use cni_format::CniExt;
     ///
@@ -178,7 +178,7 @@ pub trait CniExt<V>: Sized {
     /// The CNI specification calls this `SectionTree`.
     ///
     /// # Examples
-    /// ```ignore <https://github.com/rust-lang/rust/issues/67295>
+    /// ```
     /// use std::collections::HashMap;
     /// use cni_format::CniExt;
     ///
@@ -212,7 +212,7 @@ pub trait CniExt<V>: Sized {
     /// The CNI specification calls this `SectionTree`.
     ///
     /// # Examples
-    /// ```ignore <https://github.com/rust-lang/rust/issues/67295>
+    /// ```
     /// use std::collections::HashMap;
     /// use cni_format::CniExt;
     ///

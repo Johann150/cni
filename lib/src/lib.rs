@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(
-    invalid_html_tags,
+    rustdoc::invalid_html_tags,
     keyword_idents,
     missing_docs,
     non_ascii_idents,
