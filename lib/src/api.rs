@@ -59,6 +59,7 @@ pub trait CniExt<V>: Sized {
     ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
     /// [`HashMap::keys`]: ::std::collections::HashMap::keys
+    #[must_use]
     fn sub_tree(&self, section: &str) -> Self
     where
         Self: Clone + FromIterator<(String, V)>;
@@ -93,6 +94,7 @@ pub trait CniExt<V>: Sized {
     ///
     /// [`HashMap::values`]: ::std::collections::HashMap::values
     /// [`HashMap::keys`]: ::std::collections::HashMap::keys
+    #[must_use]
     fn sub_leaves(&self, section: &str) -> Self
     where
         Self: Clone + FromIterator<(String, V)>;

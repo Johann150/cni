@@ -236,7 +236,7 @@ impl<I: Iterator<Item = char>> CniParser<I> {
             }
         } else {
             // normal value: no comment starting character but white space, but not vertical space
-            while matches!(self.iter.peek(), Some(&c) if !is_comment(c, self.opts) && !( c.is_whitespace() && is_vertical_ws(c) ))
+            while matches!(self.iter.peek(), Some(&c) if !(is_comment(c, self.opts) || c.is_whitespace() && is_vertical_ws(c)))
             {
                 value.push(self.iter.next().unwrap());
             }
