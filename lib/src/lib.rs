@@ -143,6 +143,8 @@ pub struct CniParser<I: Iterator<Item = char>> {
     section: String,
     /// The selected parsing options.
     opts: Opts,
+    /// The position of the last value.
+    pos: Option<(usize, usize)>,
 }
 
 impl<I: Iterator<Item = char>> CniParser<I> {
@@ -154,6 +156,7 @@ impl<I: Iterator<Item = char>> CniParser<I> {
             iter: iter::Iter::new(iter),
             section: String::new(),
             opts: Opts::default(),
+            pos: None,
         }
     }
 
@@ -165,7 +168,16 @@ impl<I: Iterator<Item = char>> CniParser<I> {
             iter: iter::Iter::new(iter),
             section: String::new(),
             opts,
+            pos: None,
         }
+    }
+
+    /// Returns the position of the last value that was returned as a tuple
+    /// of line and column (both starting at 1).
+    ///
+    /// If there was no value read yet or an error occurred, returns `None`.
+    pub fn last_pos(&self) -> Option<(usize, usize)> {
+        self.pos
     }
 
     /// Skips whitespace.
@@ -269,6 +281,8 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
     fn next(&mut self) -> Option<Self::Item> {
         use error::{Error, Kind};
 
+        self.pos = None;
+
         loop {
             self.skip_ws();
             // we should be at start of a line now
@@ -347,13 +361,16 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
 
                 self.skip_ws();
 
+                let pos = (self.iter.line, self.iter.col);
+
                 let value = match self.parse_value() {
-                    Ok(key) => key,
+                    Ok(value) => value,
                     Err(e) => return Some(Err(e)),
                 };
 
                 self.skip_comment();
 
+                self.pos = Some(pos);
                 break Some(Ok((key, value)));
             }
         }
