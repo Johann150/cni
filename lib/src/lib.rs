@@ -90,7 +90,8 @@ mod serializer;
 #[cfg(any(feature = "serializer", test, doctest, doc))]
 pub use serializer::to_str;
 
-mod error;
+/// Module that contains error types.
+pub mod error;
 
 /// A struct to pass parsing options. Contains the switches to enable
 /// the different extensions.
