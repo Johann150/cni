@@ -2,7 +2,7 @@
 name = "cniutil"
 version = "0.6.1"
 authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
-edition = "2018"
+edition = "2021"
 description = "various utilities for the CNI configuration format"
 readme = "README.md"
 repository = "https://github.com/Johann150/cni"
@@ -15,3 +15,4 @@ cni_format = { version = "0.6", path = "lib", features = [ "serializer" ] }
 clap = "2.33"
 
 [workspace]
+members = [ "lib", "serde" ]
