@@ -90,6 +90,8 @@ mod serializer;
 #[cfg(any(feature = "serializer", test, doctest, doc))]
 pub use serializer::to_str;
 
+mod error;
+
 /// A struct to pass parsing options. Contains the switches to enable
 /// the different extensions.
 #[derive(Default, Clone, Copy)]
@@ -190,7 +192,7 @@ impl<I: Iterator<Item = char>> CniParser<I> {
         }
     }
 
-    fn parse_key(&mut self) -> Result<String, &'static str> {
+    fn parse_key(&mut self) -> Result<String, error::Kind> {
         let mut key = String::new();
 
         while matches!(self.iter.peek(), Some(&c) if is_key(c, self.opts)) {
@@ -199,13 +201,13 @@ impl<I: Iterator<Item = char>> CniParser<I> {
 
         if key.starts_with('.') || key.ends_with('.') {
             // key cannot start or end with a dot
-            Err("invalid key, can not start or end with a dot")
+            Err(error::Kind::InvalidKey)
         } else {
             Ok(key)
         }
     }
 
-    fn parse_value(&mut self) -> Result<String, String> {
+    fn parse_value(&mut self) -> Result<String, error::Error> {
         // since raw values might have escaped backtics, they have to
         // be constructed as Strings and cannot be a reference.
         let mut value = String::new();
@@ -231,7 +233,11 @@ impl<I: Iterator<Item = char>> CniParser<I> {
                     value.push(c);
                 } else {
                     // current value must have been a None
-                    return Err(format!("line {}:{}: unterminated raw value", line, col));
+                    return Err(error::Error {
+                        line,
+                        col,
+                        kind: error::Kind::UnterminatedRaw,
+                    });
                 }
             }
         } else {
@@ -257,10 +263,12 @@ impl<'a> From<&'a str> for CniParser<Chars<'a>> {
 }
 
 impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
-    type Item = Result<(String, String), String>;
+    type Item = error::Result<(String, String)>;
 
     /// Try to parse until the next key/value pair.
     fn next(&mut self) -> Option<Self::Item> {
+        use error::{Error, Kind};
+
         loop {
             self.skip_ws();
             // we should be at start of a line now
@@ -280,42 +288,49 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
 
                 // better error message before we store the new line and column.
                 if self.iter.peek().is_none() {
-                    return Some(Err(format!("line {}:{}: expected \"]\"", line, col)));
+                    return Some(Err(Error {
+                        line,
+                        col,
+                        kind: Kind::ExpectedSectionEnd,
+                    }));
                 }
 
                 // this key can be empty
                 match self.parse_key() {
                     Ok(key) => self.section = key.to_string(),
-                    Err(e) => return Some(Err(format!("line {}:{}: {}", line, col, e))),
+                    Err(e) => return Some(Err(Error { line, col, kind: e })),
                 };
 
                 let (line, col) = (self.iter.line, self.iter.col);
                 self.skip_ws();
 
                 if self.iter.next().map_or(true, |c| c != ']') {
-                    return Some(Err(format!("line {}:{}: expected \"]\"", line, col)));
+                    return Some(Err(Error {
+                        line,
+                        col,
+                        kind: Kind::ExpectedSectionEnd,
+                    }));
                 }
                 self.skip_comment();
             } else {
                 // this should be a key/value pair
 
+                let (line, col) = (self.iter.line, self.iter.col);
                 // parse key, prepend it with section name if present
                 let key = match self.parse_key() {
                     // this key cannot be empty
                     Ok(key) if key.is_empty() => {
-                        return Some(Err(format!(
-                            "line {}:{}: expected key",
-                            self.iter.line, self.iter.col
-                        )))
+                        return Some(Err(Error {
+                            line,
+                            col,
+                            kind: Kind::ExpectedKey,
+                        }));
                     }
                     // do not prepend an empty section
                     Ok(key) if self.section.is_empty() => key,
                     Ok(key) => format!("{}.{}", self.section, key),
                     Err(e) => {
-                        return Some(Err(format!(
-                            "line {}:{}: {}",
-                            self.iter.line, self.iter.col, e
-                        )))
+                        return Some(Err(Error { line, col, kind: e }));
                     }
                 };
 
@@ -323,7 +338,11 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
                 self.skip_ws();
 
                 if self.iter.next().map_or(true, |c| c != '=') {
-                    return Some(Err(format!("line {}:{}: expected \"=\"", line, col)));
+                    return Some(Err(Error {
+                        line,
+                        col,
+                        kind: Kind::ExpectedEquals,
+                    }));
                 }
 
                 self.skip_ws();
@@ -351,7 +370,7 @@ impl<I: Iterator<Item = char>> Iterator for CniParser<I> {
 /// # Errors
 /// Returns an `Err` if the given text is not in a valid CNI format. The `Err`
 /// will contain a message explaining the error.
-pub fn from_str(text: &str) -> Result<HashMap<String, String>, String> {
+pub fn from_str(text: &str) -> error::Result<HashMap<String, String>> {
     CniParser::from(text).collect()
 }
 
@@ -365,6 +384,6 @@ pub fn from_str(text: &str) -> Result<HashMap<String, String>, String> {
 /// # Errors
 /// Returns an `Err` if the given text is not in a valid CNI format. The `Err`
 /// will contain a message explaining the error.
-pub fn from_str_opts(text: &str, opts: Opts) -> Result<HashMap<String, String>, String> {
+pub fn from_str_opts(text: &str, opts: Opts) -> error::Result<HashMap<String, String>> {
     CniParser::new_opts(text.chars(), opts).collect()
 }
