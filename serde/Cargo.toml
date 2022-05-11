@@ -1,0 +1,19 @@
+[package]
+name = "serde_cni"
+version = "0.1.0"
+authors = ["Johann150 <johann+cni@qwertqwefsday.eu>"]
+edition = "2021"
+description = "serde implementation for CNI"
+readme = "README.md"
+repository = "https://github.com/Johann150/cni"
+license = "Unlicense"
+keywords = ["serde", "cni", "configuration"]
+categories = ["config", "encoding", "parser-implementations"]
+
+[dependencies]
+cni_format = { version = "0.6", path = "../lib", features = [ "api", "serializer" ] }
+serde = "1.0"
+
+[dev-dependencies.serde]
+version = "1.0"
+features = ["derive"]
