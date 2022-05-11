@@ -288,26 +288,29 @@ pub fn from_str<'de, T>(s: &'de str) -> Result<T>
 where
     T: Deserialize<'de>,
 {
-    let mut parser: CniParser<Chars<'de>> = s.into();
+    use std::collections::hash_map::Entry;
+
+    let mut parser: CniParser<std::str::Chars<'de>> = s.into();
     let mut data = HashMap::new();
 
     while let Some(result) = parser.next() {
-        let result = result?;
+        let (key, val) = result?;
         // can unwrap here because the parser must have returned a Ok result
-        let pos = parser.last_pos().unwrap();
-        let val = (result.1, pos.0, pos.1);
+        let (line, col) = parser.last_pos().unwrap();
+        let val = (val, line, col);
 
         // the format itself allows this, but handle duplicate keys as an error
         // because it might have unintended consequences
-        if data.contains_key(&result.0) {
-            return Err(Error {
-                line: pos.0,
-                col: pos.1,
-                kind: Kind::DuplicateKey(result.0),
-            });
-        } else {
-            data.insert(result.0, val);
-        }
+        match data.entry(key) {
+            Entry::Vacant(e) => e.insert(val),
+            Entry::Occupied(e) => {
+                return Err(Error {
+                    line,
+                    col,
+                    kind: Kind::DuplicateKey(e.remove_entry().0),
+                })
+            }
+        };
     }
 
     // the whole file is a struct/map so to represent that
@@ -321,7 +324,7 @@ fn to_tree(data: HashMap<String, (String, usize, usize)>) -> Tree {
     let mut map = data
         .sub_leaves("")
         .into_iter()
-        .map(|(key, (val, line, col))| (key.to_string(), Tree::Value(val, line, col)))
+        .map(|(key, (val, line, col))| (key, Tree::Value(val, line, col)))
         .collect::<HashMap<_, _>>();
     map.extend(data.section_leaves("").into_iter().map(|sect| {
         let tree = to_tree(data.sub_tree(&sect));
